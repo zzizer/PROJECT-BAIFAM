@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     "django_celery_beat",
     "django_celery_results",
     "users",
+    "device",
 ]
 
 MIDDLEWARE = [
@@ -182,3 +183,21 @@ CELERY_ACKS_LATE = True  # Don't acknowledge until the task is done
 CELERY_WORKER_PREFETCH_MULTIPLIER = 1  # Ensures fair task distribution between workers
 
 CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
+
+
+DEVICE_SERIAL_NUMBER = os.getenv("DEVICE_SERIAL_NUMBER")
+DEVICE_MODEL = os.getenv("DEVICE_MODEL")
+HARDWARE_VERSION = os.getenv("HARDWARE_VERSION")
+FIRMWARE_VERSION = os.getenv("FIRMWARE_VERSION")
+
+if not DEVICE_SERIAL_NUMBER:
+    raise ValueError("DEVICE_SERIAL_NUMBER is missing in the .env file")
+
+if not DEVICE_MODEL:
+    raise ValueError("DEVICE_MODEL is missing in the .env file")
+
+if not HARDWARE_VERSION:
+    raise ValueError("HARDWARE_VERSION is missing in the .env file")
+
+if not FIRMWARE_VERSION:
+    raise ValueError("FIRMWARE_VERSION is missing in the .env file")
