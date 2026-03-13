@@ -1,5 +1,7 @@
 from django.db import models
 from django.conf import settings
+from django.core.validators import MaxValueValidator
+import pytz
 
 DEVICE_SERIAL_NUMBER = settings.DEVICE_SERIAL_NUMBER
 DEVICE_MODEL = settings.DEVICE_MODEL
@@ -10,6 +12,30 @@ FIRMWARE_VERSION = settings.FIRMWARE_VERSION
 class DeviceSettings(models.Model):
     device_name = models.CharField(max_length=255, default="BAIFAM Device")
     device_location = models.CharField(max_length=255, blank=True, null=True)
+
+    timezone = models.CharField(
+        max_length=120,
+        default="UTC",
+        choices=[(tz, tz) for tz in pytz.all_timezones],
+    )
+    unlock_duration_sec = models.PositiveSmallIntegerField(default=80)
+
+    require_2finger_confirm = models.BooleanField(default=False)
+    allow_unknown_finger_log = models.BooleanField(default=False)
+
+    buzzer_enabled = models.BooleanField(default=True)
+    buzzer_volume = models.PositiveSmallIntegerField(
+        default=80, validators=[MaxValueValidator(100)]
+    )
+
+    lockout_duration_mins = models.PositiveSmallIntegerField(
+        default=10, validators=[MaxValueValidator(30)]
+    )
+    max_failed_attempts = models.PositiveSmallIntegerField(default=5)
+
+    max_duration_before_sleep_if_idle = models.PositiveSmallIntegerField(
+        default=5, validators=[MaxValueValidator(5)]
+    )
 
     serial_number = models.CharField(
         max_length=255,
