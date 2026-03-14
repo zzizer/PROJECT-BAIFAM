@@ -1,6 +1,7 @@
 from django.db import models
 import uuid
 from rest_framework import serializers
+from django.utils import timezone
 
 
 class BaseTimeStampedModel(models.Model):
@@ -42,6 +43,38 @@ class SoftDeletionModel(BaseTimeStampedModel):
     class Meta:
         abstract = True
 
+    def delete(self, deleted_by=None, *args, **kwargs):
+        from django.contrib.contenttypes.models import ContentType
+        from system.models import RecycleBin, RecycleBinItem
+
+        self.deleted_at = timezone.now()
+        self.is_active = False
+
+        self.save(update_fields=["deleted_at", "is_active", "updated_at"])
+
+        RecycleBinItem.objects.get_or_create(
+            content_type=ContentType.objects.get_for_model(self.__class__),
+            object_uuid=self.internal_base_uuid,
+            defaults={
+                "bin": RecycleBin.get(),
+                "object_repr": str(self),
+                "model_label": f"{self._meta.app_label}.{self.__class__.__name__}",
+                "deleted_at": self.deleted_at,
+                "deleted_by": deleted_by,
+            },
+        )
+
+    def hard_delete(self, *args, **kwargs):
+        from django.contrib.contenttypes.models import ContentType
+        from system.models import RecycleBinItem
+
+        RecycleBinItem.objects.filter(
+            content_type=ContentType.objects.get_for_model(self.__class__),
+            object_id=self.pk,
+        ).delete()
+
+        super().delete(*args, **kwargs)
+
 
 class BaseSerializer(serializers.ModelSerializer):
 
@@ -63,3 +96,18 @@ class BaseSerializer(serializers.ModelSerializer):
 
     class Meta:
         abstract = True
+
+
+class UUIDRelatedField(serializers.PrimaryKeyRelatedField):
+    def __init__(self, queryset, uuid_field="internal_base_uuid", **kwargs):
+        self.uuid_field = uuid_field
+        kwargs["pk_field"] = serializers.UUIDField()
+        super().__init__(queryset=queryset, **kwargs)
+
+    def to_internal_value(self, data):
+        try:
+            return self.get_queryset().get(**{self.uuid_field: data})
+        except self.get_queryset().model.DoesNotExist:
+            raise serializers.ValidationError(
+                f"Object with internal_base_uuid {data} does not exist."
+            )

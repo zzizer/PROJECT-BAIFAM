@@ -3,6 +3,7 @@
 import Sidebar from "@/components/crucial/side-bar";
 import TopBar from "@/components/crucial/top-bar";
 import React, { useState } from "react";
+import { useAuthGuard } from "@/hooks/useAuthGuard";
 
 export default function MainLayout({
   children,
@@ -10,6 +11,9 @@ export default function MainLayout({
   children: React.ReactNode;
 }) {
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const { isAuthenticated } = useAuthGuard();
+
+  if (!isAuthenticated) return null;
 
   return (
     <div className="h-screen bg-slate-50 flex flex-col">

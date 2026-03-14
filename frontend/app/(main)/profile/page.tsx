@@ -198,7 +198,7 @@ export default function ProfilePage() {
   );
 
   return (
-    <div className="p-6 max-w-2xl mx-auto space-y-6">
+    <div className="p-6 max-w-5xl mx-auto space-y-6">
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-slate-800 tracking-tight">

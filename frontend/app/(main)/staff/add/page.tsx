@@ -111,7 +111,7 @@ export default function StaffAddPage() {
   };
 
   return (
-    <div className="p-6 space-y-6 max-w-3xl mx-auto">
+    <div className="p-6 space-y-6 max-w-5xl mx-auto">
       {/* Breadcrumb + actions */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-2 text-sm text-slate-500">

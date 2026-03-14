@@ -2,20 +2,51 @@
 
 import React, { useState } from "react";
 import { Icon } from "@iconify/react";
+import { useRouter } from "next/navigation";
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { logout } from "@/store/slices/authSlice";
 
 interface TopBarProps {
   isCollapsed: boolean;
   setIsCollapsed: (collapsed: boolean) => void;
 }
 
+function getInitials(fullname: string, email: string): string {
+  if (fullname?.trim()) {
+    const parts = fullname.trim().split(/\s+/);
+    return parts.length >= 2
+      ? `${parts[0][0]}${parts[1][0]}`.toUpperCase()
+      : parts[0].slice(0, 2).toUpperCase();
+  }
+  return email?.slice(0, 2).toUpperCase() ?? "??";
+}
+
 const TopBar: React.FC<TopBarProps> = ({ isCollapsed, setIsCollapsed }) => {
   const [showDropdown, setShowDropdown] = useState(false);
+  const router = useRouter();
+  const dispatch = useAppDispatch();
+  const { user, refreshToken, isLoading } = useAppSelector((s) => s.auth);
+
+  const initials = getInitials(user?.fullname ?? "", user?.email ?? "");
+  const displayName = user?.fullname?.trim() || user?.email || "User";
+  const roleLabel = user?.is_staff ? "Staff" : "Device User";
+
+  const close = () => setShowDropdown(false);
+
+  const handleLogout = async () => {
+    close();
+    if (refreshToken) {
+      await dispatch(logout(refreshToken));
+    }
+    router.replace("/");
+  };
 
   return (
     <div className="h-16 bg-white border-0 flex items-center shadow-sm">
-      {/* Left Section — Logo and collapse toggle */}
       <div
-        className={`${isCollapsed ? "w-16" : "w-64"} flex items-center justify-between px-4 border-b border-slate-100 h-full transition-all duration-300`}
+        className={`${
+          isCollapsed ? "w-16" : "w-64"
+        } flex items-center justify-between px-4 border-b border-slate-100 h-full transition-all duration-300`}
       >
         <div className="flex items-center gap-3 min-w-0">
           <div className="w-9 h-9 bg-primary rounded-lg flex items-center justify-center shrink-0">
@@ -35,7 +66,6 @@ const TopBar: React.FC<TopBarProps> = ({ isCollapsed, setIsCollapsed }) => {
         </div>
       </div>
 
-      {/* Collapse toggle */}
       <button
         onClick={() => setIsCollapsed(!isCollapsed)}
         className="p-2 hover:bg-slate-100 rounded-lg transition-colors ml-2"
@@ -46,12 +76,9 @@ const TopBar: React.FC<TopBarProps> = ({ isCollapsed, setIsCollapsed }) => {
         />
       </button>
 
-      {/* Spacer */}
       <div className="flex-1" />
 
-      {/* Right Section — Status, actions, profile */}
       <div className="flex items-center gap-3 px-6">
-        {/* Device status pill */}
         <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-full">
           <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
           <span className="text-xs text-slate-600 font-medium">
@@ -59,7 +86,6 @@ const TopBar: React.FC<TopBarProps> = ({ isCollapsed, setIsCollapsed }) => {
           </span>
         </div>
 
-        {/* Notifications */}
         <button className="relative p-2 hover:bg-slate-100 rounded-lg transition-colors">
           <Icon
             icon="hugeicons:notification-02"
@@ -68,15 +94,14 @@ const TopBar: React.FC<TopBarProps> = ({ isCollapsed, setIsCollapsed }) => {
           <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
         </button>
 
-        {/* Profile dropdown */}
         <div className="relative">
           <button
-            onClick={() => setShowDropdown(!showDropdown)}
+            onClick={() => setShowDropdown((v) => !v)}
             className="flex items-center gap-2 hover:bg-slate-100 rounded-lg p-1.5 pr-2 transition-colors"
           >
             <div className="w-9 h-9 bg-primary rounded-full flex items-center justify-center shrink-0">
               <span className="text-primary-foreground font-semibold text-sm">
-                AD
+                {initials}
               </span>
             </div>
             <Icon
@@ -86,37 +111,60 @@ const TopBar: React.FC<TopBarProps> = ({ isCollapsed, setIsCollapsed }) => {
           </button>
 
           {showDropdown && (
-            <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-slate-200 py-2 z-50">
-              <div className="px-4 py-3 border-b border-slate-200">
-                <p className="text-sm font-semibold text-slate-800">Admin</p>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Device Administrator
-                </p>
+            <>
+              <div className="fixed inset-0 z-40" onClick={close} />
+
+              <div className="absolute right-0 mt-2 w-56 bg-white rounded-lg shadow-lg border border-slate-200 py-2 z-50">
+                {/* User info */}
+                <div className="px-4 py-3 border-b border-slate-200">
+                  <p className="text-sm font-semibold text-slate-800 truncate">
+                    {displayName}
+                  </p>
+                  <p className="text-xs text-slate-500 mt-0.5">{roleLabel}</p>
+                </div>
+
+                <button
+                  className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 transition-colors text-left"
+                  onClick={() => {
+                    close();
+                    router.push("/profile");
+                  }}
+                >
+                  <Icon
+                    icon="hugeicons:user-03"
+                    className="text-lg text-slate-600"
+                  />
+                  <span className="text-sm text-slate-700">My Profile</span>
+                </button>
+
+                <button
+                  className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 transition-colors text-left"
+                  onClick={() => {
+                    close();
+                    router.push("/settings");
+                  }}
+                >
+                  <Icon
+                    icon="hugeicons:setting-07"
+                    className="text-lg text-slate-600"
+                  />
+                  <span className="text-sm text-slate-700">Settings</span>
+                </button>
+
+                <div className="border-t border-slate-200 my-1" />
+
+                <button
+                  disabled={isLoading}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-red-50 transition-colors text-left text-red-600 disabled:opacity-50"
+                  onClick={handleLogout}
+                >
+                  <Icon icon="hugeicons:logout-square-01" className="text-lg" />
+                  <span className="text-sm font-medium">
+                    {isLoading ? "Logging out…" : "Logout"}
+                  </span>
+                </button>
               </div>
-
-              <button className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 transition-colors text-left">
-                <Icon
-                  icon="hugeicons:user-03"
-                  className="text-lg text-slate-600"
-                />
-                <span className="text-sm text-slate-700">My Profile</span>
-              </button>
-
-              <button className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 transition-colors text-left">
-                <Icon
-                  icon="hugeicons:setting-07"
-                  className="text-lg text-slate-600"
-                />
-                <span className="text-sm text-slate-700">Settings</span>
-              </button>
-
-              <div className="border-t border-slate-200 my-1" />
-
-              <button className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-red-50 transition-colors text-left text-red-600">
-                <Icon icon="hugeicons:logout-square-01" className="text-lg" />
-                <span className="text-sm font-medium">Logout</span>
-              </button>
-            </div>
+            </>
           )}
         </div>
       </div>
