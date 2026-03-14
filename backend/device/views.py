@@ -18,7 +18,7 @@ class DeviceSettingsView(APIView):
         device_settings = DeviceSettings.get()
         serializer = DeviceSettingsSerializer(device_settings)
         return Response(serializer.data)
-    
+
     @extend_schema(
         summary="Update Device Settings",
         description="Update the device name and location. Immutable fields cannot be changed.",

@@ -39,6 +39,9 @@ INSTALLED_APPS = [
     "django_celery_results",
     "users",
     "device",
+    "api_mgt",
+    "system",
+    "staff",
 ]
 
 MIDDLEWARE = [
@@ -111,6 +114,7 @@ AUTH_USER_MODEL = "users.CustomUser"
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
+        "api_mgt.authentication.APIKeyAuthentication",
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
     "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
@@ -130,7 +134,9 @@ SIMPLE_JWT = {
 
 CORS_ALLOW_ALL_ORIGINS = True
 
-CORS_ALLOW_HEADERS = list(default_headers) + []
+CORS_ALLOW_HEADERS = list(default_headers) + [
+    "X-API-KEY",
+]
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")
