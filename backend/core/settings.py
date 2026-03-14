@@ -53,6 +53,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "api_mgt.middleware.APIKeyRequestLogMiddleware",
 ]
 
 ROOT_URLCONF = "core.urls"
@@ -117,7 +118,10 @@ REST_FRAMEWORK = {
         "api_mgt.authentication.APIKeyAuthentication",
         "rest_framework_simplejwt.authentication.JWTAuthentication",
     ),
-    "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
+    "DEFAULT_PERMISSION_CLASSES": (
+        "rest_framework.permissions.IsAuthenticated",
+        "api_mgt.permissions.HasRequiredScopes",
+    ),
     "DEFAULT_PAGINATION_CLASS": "utils.pagination.CustomPageNumberPagination",
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
 }

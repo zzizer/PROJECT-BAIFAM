@@ -34,7 +34,6 @@ class APIKey(SoftDeletionModel):
     last_used_at = models.DateTimeField(null=True, blank=True, editable=False)
 
     class Meta:
-        app_label = "api_mgt"
         ordering = ["-created_at"]
         verbose_name = "API Key"
         verbose_name_plural = "API Keys"
@@ -47,11 +46,12 @@ class APIKey(SoftDeletionModel):
 
     @property
     def is_valid(self) -> bool:
-        """True only when active AND not expired."""
         return self.is_active and not self.is_expired
 
     def has_scope(self, scope_value: str) -> bool:
-        return self.scopes.filter(value=scope_value, is_active=True).exists()
+        return self.api_key_scopes.filter(
+            scope__value=scope_value, is_active=True
+        ).exists()
 
     @classmethod
     def generate(cls) -> tuple["APIKey", str]:
@@ -87,7 +87,6 @@ class APIKeyScope(models.Model):
     is_active = models.BooleanField(default=True)
 
     class Meta:
-        app_label = "api_mgt"
         unique_together = ("api_key", "scope")
         verbose_name = "API Key Scope"
         verbose_name_plural = "API Key Scopes"
@@ -106,9 +105,9 @@ class APIKeyRequestLog(models.Model):
     requested_at = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:
-        app_label = "api_mgt"
         ordering = ["-requested_at"]
         verbose_name = "API Key Request Log"
+        verbose_name_plural = "API Key Request Logs"
 
     def __str__(self) -> str:
         return f"{self.api_key.prefix}… {self.method} {self.path} → {self.status_code}"
