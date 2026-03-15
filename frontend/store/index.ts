@@ -9,17 +9,28 @@ import {
   PURGE,
   REGISTER,
 } from "redux-persist";
-import storage from "redux-persist/lib/storage";
 import authReducer from "./slices/authSlice";
 
-const authPersistConfig = {
-  key: "auth",
-  storage,
-  whitelist: ["user", "accessToken", "refreshToken", "isAuthenticated"],
-};
+const createNoopStorage = () => ({
+  getItem: (_key: string) => Promise.resolve(null),
+  setItem: (_key: string, value: unknown) => Promise.resolve(value),
+  removeItem: (_key: string) => Promise.resolve(),
+});
+
+const storage =
+  typeof window !== "undefined"
+    ? require("redux-persist/lib/storage").default
+    : createNoopStorage();
 
 const rootReducer = combineReducers({
-  auth: persistReducer(authPersistConfig, authReducer),
+  auth: persistReducer(
+    {
+      key: "auth",
+      storage,
+      whitelist: ["user", "accessToken", "refreshToken", "isAuthenticated"],
+    },
+    authReducer,
+  ),
 });
 
 export const store = configureStore({
@@ -34,6 +45,3 @@ export const store = configureStore({
 });
 
 export const persistor = persistStore(store);
-
-// ⚠️  RootState and AppDispatch have moved to store/types.ts
-// Import them from there, NOT from here.

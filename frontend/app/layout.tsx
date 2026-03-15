@@ -1,10 +1,21 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { Geist } from "next/font/google";
-import { cn } from "@/lib/utils";
+import localFont from "next/font/local";
+import { cn } from "@/utils";
 import StoreProvider from "@/store/StoreProvider";
+import QueryProvider from "@/providers/QueryProvider";
 
-const geist = Geist({ subsets: ["latin"], variable: "--font-sans" });
+const outfit = localFont({
+  src: [
+    { path: "../public/fonts/Outfit-Light.ttf", weight: "300" },
+    { path: "../public/fonts/Outfit-Regular.ttf", weight: "400" },
+    { path: "../public/fonts/Outfit-Medium.ttf", weight: "500" },
+    { path: "../public/fonts/Outfit-SemiBold.ttf", weight: "600" },
+    { path: "../public/fonts/Outfit-Bold.ttf", weight: "700" },
+    { path: "../public/fonts/Outfit-ExtraBold.ttf", weight: "800" },
+  ],
+  variable: "--font-sans",
+});
 
 export const metadata: Metadata = {
   title: "AccessPi",
@@ -13,13 +24,15 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
-    <html lang="en" className={cn("font-sans", geist.variable)}>
+    <html lang="en" className={cn("font-sans", outfit.variable)}>
       <body className="antialiased">
-        <StoreProvider>{children}</StoreProvider>
+        <StoreProvider>
+          <QueryProvider>{children}</QueryProvider>
+        </StoreProvider>
       </body>
     </html>
   );

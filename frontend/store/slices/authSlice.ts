@@ -1,6 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from "@reduxjs/toolkit";
 import apiClient from "@/lib/api-client";
-import type { LoginPayload, LoginResponse, User } from "@/types/auth.types";
+import type { LoginPayload, LoginResponse, User } from "@/types";
 import axios from "axios";
 
 interface AuthState {
@@ -22,7 +22,7 @@ const initialState: AuthState = {
 };
 
 export const login = createAsyncThunk(
-  "user/login",
+  "auth/login",
   async (payload: LoginPayload, { rejectWithValue }) => {
     try {
       const { data } = await apiClient.post<LoginResponse>(
@@ -42,7 +42,7 @@ export const login = createAsyncThunk(
 );
 
 export const logout = createAsyncThunk(
-  "user/logout",
+  "auth/logout",
   async (refreshToken: string, { rejectWithValue }) => {
     try {
       await apiClient.post("/user/logout/", { refresh: refreshToken });
@@ -65,7 +65,6 @@ const authSlice = createSlice({
       state.accessToken = action.payload.accessToken;
       state.refreshToken = action.payload.refreshToken;
     },
-
     clearAuth(state) {
       state.user = null;
       state.accessToken = null;
@@ -73,7 +72,6 @@ const authSlice = createSlice({
       state.isAuthenticated = false;
       state.error = null;
     },
-
     clearError(state) {
       state.error = null;
     },

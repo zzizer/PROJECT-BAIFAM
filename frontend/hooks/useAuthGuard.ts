@@ -9,9 +9,7 @@ export function useAuthGuard() {
   const { isAuthenticated } = useAppSelector((s) => s.auth);
 
   useEffect(() => {
-    if (!isAuthenticated) {
-      router.replace("/");
-    }
+    if (!isAuthenticated) router.replace("/");
   }, [isAuthenticated, router]);
 
   return { isAuthenticated };
