@@ -21,6 +21,6 @@ urlpatterns = [
         DepartmentDetailView.as_view(),
         name="department-detail",
     ),
-    path("staff/", StaffListCreateView.as_view(), name="staff-list-create"),
-    path("staff/<uuid:uuid>/", StaffDetailView.as_view(), name="staff-detail"),
+    path("", StaffListCreateView.as_view(), name="staff-list-create"),
+    path("<uuid:uuid>/", StaffDetailView.as_view(), name="staff-detail"),
 ]

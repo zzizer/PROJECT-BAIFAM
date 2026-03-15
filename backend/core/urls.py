@@ -14,6 +14,8 @@ urlpatterns = [
     ),
     path("api/user/", include("users.urls")),
     path("api/device/", include("device.urls")),
+    path("api/staff/", include("staff.urls")),
+    path("api/fingerprints/", include("fingerprints.urls")),
 ]
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
