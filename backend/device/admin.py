@@ -11,6 +11,7 @@ class DeviceSettingsAdmin(admin.ModelAdmin):
         "device_model",
         "hardware_version",
         "firmware_version",
+        "fingerprint_template_size",
     )
 
     readonly_fields = (
@@ -18,6 +19,7 @@ class DeviceSettingsAdmin(admin.ModelAdmin):
         "device_model",
         "hardware_version",
         "firmware_version",
+        "fingerprint_template_size",
     )
 
     def has_delete_permission(self, request, obj=None):

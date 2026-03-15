@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     "api_mgt",
     "system",
     "staff",
+    "fingerprints",
 ]
 
 MIDDLEWARE = [
@@ -199,6 +200,7 @@ DEVICE_SERIAL_NUMBER = os.getenv("DEVICE_SERIAL_NUMBER")
 DEVICE_MODEL = os.getenv("DEVICE_MODEL")
 HARDWARE_VERSION = os.getenv("HARDWARE_VERSION")
 FIRMWARE_VERSION = os.getenv("FIRMWARE_VERSION")
+FINGERPRINT_TEMPLATE_SIZE = os.getenv("FINGERPRINT_TEMPLATE_SIZE")
 
 if not DEVICE_SERIAL_NUMBER:
     raise ValueError("DEVICE_SERIAL_NUMBER is missing in the .env file")
@@ -211,3 +213,6 @@ if not HARDWARE_VERSION:
 
 if not FIRMWARE_VERSION:
     raise ValueError("FIRMWARE_VERSION is missing in the .env file")
+
+if not FINGERPRINT_TEMPLATE_SIZE:
+    raise ValueError("FINGERPRINT_TEMPLATE_SIZE is missing in the .env file")

@@ -5,6 +5,7 @@ from django.contrib.auth.models import (
     BaseUserManager,
     PermissionsMixin,
 )
+from staff.models import Staff
 
 
 class UserManager(BaseUserManager):
@@ -56,3 +57,16 @@ class CustomUser(AbstractBaseUser, PermissionsMixin, SoftDeletionModel):
             "refresh": str(refresh),
             "access": str(refresh.access_token),
         }
+
+    def save(self, *args, **kwargs):
+        is_new = self._state.adding
+        super().save(*args, **kwargs)
+
+        if is_new and (
+            not hasattr(self, "staff_profile") or self.staff_profile is None
+        ):
+            Staff.objects.create(
+                user=self,
+                full_name=self.fullname or self.email.split("@")[0],
+                email=self.email,
+            )

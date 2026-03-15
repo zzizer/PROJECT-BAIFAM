@@ -7,6 +7,7 @@ DEVICE_SERIAL_NUMBER = settings.DEVICE_SERIAL_NUMBER
 DEVICE_MODEL = settings.DEVICE_MODEL
 HARDWARE_VERSION = settings.HARDWARE_VERSION
 FIRMWARE_VERSION = settings.FIRMWARE_VERSION
+FINGERPRINT_TEMPLATE_SIZE = settings.FINGERPRINT_TEMPLATE_SIZE
 
 
 class DeviceSettings(models.Model):
@@ -37,6 +38,8 @@ class DeviceSettings(models.Model):
         default=5, validators=[MaxValueValidator(5)]
     )
 
+    max_fingerprints_per_staff = models.PositiveSmallIntegerField(default=10)
+
     serial_number = models.CharField(
         max_length=255,
         unique=True,
@@ -52,6 +55,10 @@ class DeviceSettings(models.Model):
     )
     firmware_version = models.CharField(
         max_length=255,
+        editable=False,
+    )
+    fingerprint_template_size = models.PositiveSmallIntegerField(
+        default=1000,
         editable=False,
     )
 
@@ -80,6 +87,7 @@ class DeviceSettings(models.Model):
             self.device_model = original.device_model
             self.hardware_version = original.hardware_version
             self.firmware_version = original.firmware_version
+            self.fingerprint_template_size = original.fingerprint_template_size
 
         super().save(*args, **kwargs)
 
@@ -91,6 +99,7 @@ class DeviceSettings(models.Model):
                 "device_model": DEVICE_MODEL,
                 "hardware_version": HARDWARE_VERSION,
                 "firmware_version": FIRMWARE_VERSION,
+                "fingerprint_template_size": FINGERPRINT_TEMPLATE_SIZE,
             },
         )
         return obj
