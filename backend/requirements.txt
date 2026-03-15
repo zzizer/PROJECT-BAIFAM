@@ -58,9 +58,11 @@ pyasn1==0.6.2
 pyasn1_modules==0.4.2
 pycparser==3.0
 pydyf==0.12.1
+pyfingerprint==1.5
 PyJWT==2.11.0
 pyOpenSSL==25.3.0
 pyphen==0.17.2
+pyserial==3.5
 python-crontab==3.3.0
 python-dateutil==2.9.0.post0
 python-dotenv==1.2.2
