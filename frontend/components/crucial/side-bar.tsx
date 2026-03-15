@@ -244,8 +244,8 @@ const menuItems: MenuItem[] = [
     label: "Personnel",
     icon: "hugeicons:user-group",
     subItems: [
-      { label: "Roles", href: "/staff/roles" },
-      { label: "Departments", href: "/staff/departments" },
+      { label: "Roles", href: "/roles" },
+      { label: "Departments", href: "/departments" },
       { label: "Staff", href: "/staff" },
     ],
   },
