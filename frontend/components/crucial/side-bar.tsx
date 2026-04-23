@@ -259,6 +259,11 @@ const menuItems: MenuItem[] = [
     icon: "hugeicons:setting-07",
     href: "/settings",
   },
+  {
+    label: "API Management",
+    icon: "hugeicons:api",
+    href: "/api-keys-mgt",
+  },
 ];
 
 const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed }) => {

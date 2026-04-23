@@ -12,6 +12,9 @@ import {
   FINGERPRINTS_API,
   LOGS_API,
   DEVICE_SETTINGS_API,
+  SCOPES_API,
+  API_KEYS_API,
+  API_KEY_LOGS_API,
 } from "@/lib/api";
 import type {
   Staff,
@@ -23,7 +26,13 @@ import type {
   AccessLog,
   DeviceSettings,
   UpdateDeviceSettingsPayload,
+  Scope,
+  APIKey,
+  CreateAPIKeyPayload,
+  UpdateAPIKeyPayload,
+  APIKeyRequestLog,
   PaginationParams,
+  PaginatedResponse,
 } from "@/types";
 
 export const QK = {
@@ -171,5 +180,98 @@ export function useUpdateDeviceSettings() {
     mutationFn: (data: UpdateDeviceSettingsPayload) =>
       DEVICE_SETTINGS_API.update(data),
     onSuccess: () => qc.invalidateQueries({ queryKey: QK.device.settings() }),
+  });
+}
+
+export const API_MGT_QK = {
+  scopes: {
+    all: () => ["scopes"] as const,
+  },
+  apiKeys: {
+    all: () => ["api-keys"] as const,
+    list: (p?: PaginationParams & { status?: string }) =>
+      ["api-keys", "list", p] as const,
+    detail: (uuid: string) => ["api-keys", uuid] as const,
+  },
+  apiKeyLogs: {
+    all: () => ["api-key-logs"] as const,
+    list: (p?: PaginationParams & { api_key?: string; method?: string }) =>
+      ["api-key-logs", "list", p] as const,
+  },
+} as const;
+
+// ── Scopes ────────────────────────────────────────────────────────────────────
+
+export function useScopes() {
+  return useQuery<PaginatedResponse<Scope>>({
+    queryKey: API_MGT_QK.scopes.all(),
+    queryFn: () => SCOPES_API.getAll(),
+    staleTime: 1000 * 60 * 10,
+  });
+}
+
+// ── API Keys ──────────────────────────────────────────────────────────────────
+
+export function useAPIKeyList(params?: PaginationParams & { status?: string }) {
+  return useQuery({
+    queryKey: API_MGT_QK.apiKeys.list(params),
+    queryFn: () => API_KEYS_API.getAll(params),
+  });
+}
+
+export function useAPIKeyDetail(uuid: string) {
+  return useQuery<APIKey>({
+    queryKey: API_MGT_QK.apiKeys.detail(uuid),
+    queryFn: () => API_KEYS_API.getOne(uuid),
+    enabled: !!uuid,
+  });
+}
+
+export function useCreateAPIKey() {
+  const qc = useQueryClient();
+  return useMutation<APIKey, Error, CreateAPIKeyPayload>({
+    mutationFn: (data) => API_KEYS_API.create(data),
+    onSuccess: () =>
+      qc.invalidateQueries({ queryKey: API_MGT_QK.apiKeys.all() }),
+  });
+}
+
+export function useUpdateAPIKey(uuid: string) {
+  const qc = useQueryClient();
+  return useMutation<APIKey, Error, UpdateAPIKeyPayload>({
+    mutationFn: (data) => API_KEYS_API.update(uuid, data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: API_MGT_QK.apiKeys.all() });
+      qc.invalidateQueries({ queryKey: API_MGT_QK.apiKeys.detail(uuid) });
+    },
+  });
+}
+
+export function useToggleAPIKey() {
+  const qc = useQueryClient();
+  return useMutation<APIKey, Error, string>({
+    mutationFn: (uuid) => API_KEYS_API.toggle(uuid),
+    onSuccess: () =>
+      qc.invalidateQueries({ queryKey: API_MGT_QK.apiKeys.all() }),
+  });
+}
+
+export function useRevokeAPIKey() {
+  const qc = useQueryClient();
+  return useMutation<void, Error, string>({
+    mutationFn: (uuid) => API_KEYS_API.revoke(uuid).then(() => {}),
+    onSuccess: () =>
+      qc.invalidateQueries({ queryKey: API_MGT_QK.apiKeys.all() }),
+  });
+}
+
+// ── Request Logs ──────────────────────────────────────────────────────────────
+
+export function useAPIKeyLogs(
+  params?: PaginationParams & { api_key?: string; method?: string },
+) {
+  return useQuery({
+    queryKey: API_MGT_QK.apiKeyLogs.list(params),
+    queryFn: () => API_KEY_LOGS_API.getAll(params),
   });
 }

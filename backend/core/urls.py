@@ -16,6 +16,8 @@ urlpatterns = [
     path("api/device/", include("device.urls")),
     path("api/staff/", include("staff.urls")),
     path("api/fingerprints/", include("fingerprints.urls")),
+    path("api/api-keys/", include("api_mgt.urls")),
+    path("api/system/", include("system.urls")),
 ]
 
 urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

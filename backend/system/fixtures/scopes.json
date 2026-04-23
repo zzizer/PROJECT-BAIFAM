@@ -1,0 +1,77 @@
+[
+  {
+    "value": "read:logs",
+    "label": "Read Logs",
+    "description": "GET /api/logs/"
+  },
+  {
+    "value": "write:logs",
+    "label": "Write Logs",
+    "description": "POST /api/logs/"
+  },
+  {
+    "value": "read:staff",
+    "label": "Read Staff",
+    "description": "GET /api/staff/"
+  },
+  {
+    "value": "write:staff",
+    "label": "Write Staff",
+    "description": "POST /api/staff/ and PATCH /api/staff/<uuid>/"
+  },
+  {
+    "value": "delete:staff",
+    "label": "Delete Staff",
+    "description": "DELETE /api/staff/<uuid>/"
+  },
+  {
+    "value": "read:status",
+    "label": "Read Status",
+    "description": "GET /api/status/"
+  },
+  {
+    "value": "read:settings",
+    "label": "Read Settings",
+    "description": "GET /api/device/settings/"
+  },
+  {
+    "value": "write:settings",
+    "label": "Write Settings",
+    "description": "PUT /api/device/settings/"
+  },
+  {
+    "value": "read:fingerprints",
+    "label": "Read Fingerprints",
+    "description": "GET /api/fingerprints/"
+  },
+  {
+    "value": "write:fingerprints",
+    "label": "Write Fingerprints",
+    "description": "POST /api/fingerprints/"
+  },
+  {
+    "value": "read:devices",
+    "label": "Read Devices",
+    "description": "GET /api/device/"
+  },
+  {
+    "value": "write:devices",
+    "label": "Write Devices",
+    "description": "PUT /api/device/"
+  },
+  {
+    "value": "read:reports",
+    "label": "Read Reports",
+    "description": "GET /api/reports/"
+  },
+  {
+    "value": "export:data",
+    "label": "Export Data",
+    "description": "POST /api/export/"
+  },
+  {
+    "value": "admin:keys",
+    "label": "Admin Keys",
+    "description": "Full API key management"
+  }
+]

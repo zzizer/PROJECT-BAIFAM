@@ -6,6 +6,8 @@ import hashlib
 
 
 class APIKey(SoftDeletionModel):
+    ref_prefix = "APIKEY"
+
     name = models.CharField(
         max_length=128,
         help_text='Human label, e.g. "HR System Integration"',

@@ -5,6 +5,7 @@
  * @example
  * import { STAFF_API, AUTH_API } from "@/lib/api";
  */
+import { buildQuery } from "@/utils";
 import apiClient from "./api-client";
 import { createResourceAPI } from "./create-resource-api";
 import type {
@@ -23,6 +24,13 @@ import type {
   AccessSchedule,
   DeviceSettings,
   UpdateDeviceSettingsPayload,
+  PaginatedResponse,
+  PaginationParams,
+  Scope,
+  APIKey,
+  CreateAPIKeyPayload,
+  UpdateAPIKeyPayload,
+  APIKeyRequestLog,
 } from "@/types";
 
 export const AUTH_API = {
@@ -69,4 +77,41 @@ export const DEVICE_SETTINGS_API = {
   get: () => apiClient.get<DeviceSettings>("/settings/").then((r) => r.data),
   update: (data: UpdateDeviceSettingsPayload) =>
     apiClient.patch<DeviceSettings>("/settings/", data).then((r) => r.data),
+};
+
+export const SCOPES_API = {
+  getAll: () =>
+    apiClient
+      .get<PaginatedResponse<Scope>>("/system/scopes/")
+      .then((r) => r.data),
+};
+
+export const API_KEYS_API = {
+  getAll: (params?: PaginationParams & { status?: string }) =>
+    apiClient
+      .get<PaginatedResponse<APIKey>>(`/api-keys/${buildQuery(params)}`)
+      .then((r) => r.data),
+
+  getOne: (uuid: string) =>
+    apiClient.get<APIKey>(`/api-keys/${uuid}/`).then((r) => r.data),
+
+  create: (data: CreateAPIKeyPayload) =>
+    apiClient.post<APIKey>("/api-keys/", data).then((r) => r.data),
+
+  update: (uuid: string, data: UpdateAPIKeyPayload) =>
+    apiClient.patch<APIKey>(`/api-keys/${uuid}/`, data).then((r) => r.data),
+
+  toggle: (uuid: string) =>
+    apiClient.post<APIKey>(`/api-keys/${uuid}/toggle/`).then((r) => r.data),
+
+  revoke: (uuid: string) => apiClient.delete(`/api-keys/${uuid}/`),
+};
+
+export const API_KEY_LOGS_API = {
+  getAll: (params?: PaginationParams & { api_key?: string; method?: string }) =>
+    apiClient
+      .get<
+        PaginatedResponse<APIKeyRequestLog>
+      >(`/api-keys/logs/${buildQuery(params)}`)
+      .then((r) => r.data),
 };

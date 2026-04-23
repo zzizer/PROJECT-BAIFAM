@@ -155,3 +155,75 @@ export interface DeviceSettings {
 export type UpdateDeviceSettingsPayload = Partial<
   Omit<DeviceSettings, "id" | "updated_at">
 >;
+
+export interface Scope {
+  id: number;
+  uuid: string;
+  value: string;
+  label: string;
+  description: string;
+  is_active: boolean;
+  internal_base_uuid: string;
+}
+
+export interface APIKeyScope {
+  id: number;
+  scope: Scope;
+  is_active: boolean;
+}
+
+export interface APIKeyScopeFlat {
+  id: number;
+  uuid: string;
+  value: string;
+  label: string;
+  description: string;
+  scope_link_id: number;
+  scope_link_active: boolean;
+  internal_base_uuid: string;
+}
+
+export interface APIKey {
+  id: number;
+  ref_code: string;
+  internal_base_uuid: string;
+  name: string;
+  prefix: string;
+  scopes: APIKeyScopeFlat[];
+  expires_at: string | null;
+  last_used_at: string | null;
+  is_active: boolean;
+  is_expired: boolean;
+  is_valid: boolean;
+  created_by: number | null;
+  created_by_name: string | null;
+  request_log_count: number;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+  plaintext_key?: string; // only present on the create response
+}
+
+export interface CreateAPIKeyPayload {
+  name: string;
+  scope_uuids: string[];
+  expires_at?: string | null;
+}
+
+export interface UpdateAPIKeyPayload {
+  name?: string;
+  scope_uuids?: string[];
+  expires_at?: string | null;
+}
+
+export interface APIKeyRequestLog {
+  id: number;
+  api_key: number;
+  api_key_name: string;
+  api_key_prefix: string;
+  method: string;
+  path: string;
+  status_code: number;
+  ip_address: string | null;
+  requested_at: string;
+}

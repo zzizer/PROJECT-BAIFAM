@@ -1,51 +1,25 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useRef, useCallback } from "react";
 import { Icon } from "@iconify/react";
 import PaginatedTable, { Column } from "@/components/commons/paginated-table";
+import {
+  useAPIKeyList,
+  useCreateAPIKey,
+  useUpdateAPIKey,
+  useToggleAPIKey,
+  useRevokeAPIKey,
+  useScopes,
+} from "@/hooks";
+import type {
+  APIKey,
+  APIKeyScopeFlat,
+  Scope,
+  CreateAPIKeyPayload,
+  UpdateAPIKeyPayload,
+} from "@/types";
 
-// ── Types ──────────────────────────────────────────────────────────
-interface APIKey {
-  id: number;
-  name: string;
-  prefix: string;
-  scopes: string[];
-  active: boolean;
-  expired: boolean;
-  expires: string | null;
-  lastUsed: string | null;
-  created: string;
-  calls: number;
-}
-
-// ── Constants ──────────────────────────────────────────────────────
-const ALL_SCOPES = [
-  { v: "read:logs", l: "Read logs", d: "GET /api/logs/" },
-  { v: "write:logs", l: "Write logs", d: "POST /api/logs/" },
-  { v: "read:staff", l: "Read staff", d: "GET /api/users/staff/" },
-  { v: "write:staff", l: "Write staff", d: "POST/PUT /api/staff/" },
-  { v: "delete:staff", l: "Delete staff", d: "DELETE /api/staff/:id" },
-  { v: "read:status", l: "Read status", d: "GET /api/status/" },
-  { v: "read:settings", l: "Read settings", d: "GET /api/settings/" },
-  { v: "write:settings", l: "Write settings", d: "PUT /api/settings/" },
-  {
-    v: "read:fingerprints",
-    l: "Read fingerprints",
-    d: "GET /api/fingerprints/",
-  },
-  {
-    v: "write:fingerprints",
-    l: "Write fingerprints",
-    d: "POST /api/fingerprints/",
-  },
-  { v: "read:visitors", l: "Read visitors", d: "GET /api/visitors/" },
-  { v: "write:visitors", l: "Write visitors", d: "POST /api/visitors/" },
-  { v: "read:devices", l: "Read devices", d: "GET /api/devices/" },
-  { v: "write:devices", l: "Write devices", d: "PUT /api/devices/" },
-  { v: "read:reports", l: "Read reports", d: "GET /api/reports/" },
-  { v: "export:data", l: "Export data", d: "POST /api/export/" },
-  { v: "admin:keys", l: "Admin keys", d: "Full API key mgmt" },
-];
+// ── Helpers ────────────────────────────────────────────────────────
 
 const SCOPE_COLORS = [
   "bg-blue-50 text-blue-800 border-blue-200",
@@ -59,157 +33,10 @@ const SCOPE_COLORS = [
   "bg-slate-100 text-slate-700 border-slate-200",
 ];
 
-const scopeColor = (s: string) =>
-  SCOPE_COLORS[ALL_SCOPES.findIndex((x) => x.v === s) % SCOPE_COLORS.length];
+const scopeColor = (value: string, all: Scope[]) =>
+  SCOPE_COLORS[all.findIndex((x) => x.value === value) % SCOPE_COLORS.length] ??
+  SCOPE_COLORS[0];
 
-const MOCK_KEYS: APIKey[] = [
-  {
-    id: 1,
-    name: "HR System Integration",
-    prefix: "ak_3f9c2e",
-    scopes: ["read:logs", "read:staff"],
-    active: true,
-    expired: false,
-    expires: null,
-    lastUsed: "2024-12-14T08:42:00",
-    created: "2024-01-15T10:00:00",
-    calls: 1420,
-  },
-  {
-    id: 2,
-    name: "CCTV Dashboard",
-    prefix: "ak_7b1d4f",
-    scopes: ["read:status", "read:logs", "read:devices"],
-    active: true,
-    expired: false,
-    expires: "2025-06-01",
-    lastUsed: "2024-12-13T16:20:00",
-    created: "2024-02-01T09:00:00",
-    calls: 8832,
-  },
-  {
-    id: 3,
-    name: "Payroll Export Script",
-    prefix: "ak_9a5e8c",
-    scopes: ["read:logs", "read:staff", "export:data"],
-    active: false,
-    expired: false,
-    expires: null,
-    lastUsed: "2024-11-30T12:00:00",
-    created: "2024-03-10T08:30:00",
-    calls: 301,
-  },
-  {
-    id: 4,
-    name: "Mobile Access App",
-    prefix: "ak_2c8f1a",
-    scopes: ["read:fingerprints", "read:visitors", "read:status"],
-    active: true,
-    expired: false,
-    expires: "2025-12-31",
-    lastUsed: "2024-12-14T07:00:00",
-    created: "2024-04-22T11:00:00",
-    calls: 22410,
-  },
-  {
-    id: 5,
-    name: "Audit Logger",
-    prefix: "ak_5e3b7d",
-    scopes: ["read:logs", "read:reports"],
-    active: true,
-    expired: false,
-    expires: null,
-    lastUsed: "2024-12-12T09:15:00",
-    created: "2024-05-05T08:00:00",
-    calls: 5670,
-  },
-  {
-    id: 6,
-    name: "Device Manager",
-    prefix: "ak_1d9a4c",
-    scopes: ["read:devices", "write:devices"],
-    active: false,
-    expired: true,
-    expires: "2024-11-01",
-    lastUsed: "2024-10-31T18:00:00",
-    created: "2024-06-01T09:00:00",
-    calls: 440,
-  },
-  {
-    id: 7,
-    name: "Visitor Kiosk",
-    prefix: "ak_8b2e5f",
-    scopes: ["write:visitors", "read:visitors"],
-    active: true,
-    expired: false,
-    expires: null,
-    lastUsed: "2024-12-14T10:00:00",
-    created: "2024-07-10T10:00:00",
-    calls: 3120,
-  },
-  {
-    id: 8,
-    name: "Settings Sync",
-    prefix: "ak_4f7c1e",
-    scopes: ["read:settings", "write:settings"],
-    active: true,
-    expired: false,
-    expires: "2026-01-01",
-    lastUsed: "2024-12-10T14:30:00",
-    created: "2024-08-15T09:00:00",
-    calls: 89,
-  },
-  {
-    id: 9,
-    name: "Fingerprint Enroller",
-    prefix: "ak_6a3d9b",
-    scopes: ["write:fingerprints", "read:fingerprints"],
-    active: true,
-    expired: false,
-    expires: null,
-    lastUsed: "2024-12-13T11:00:00",
-    created: "2024-09-01T08:00:00",
-    calls: 2200,
-  },
-  {
-    id: 10,
-    name: "Admin Console",
-    prefix: "ak_0c5e2a",
-    scopes: ["admin:keys", "read:settings", "write:settings"],
-    active: true,
-    expired: false,
-    expires: null,
-    lastUsed: "2024-12-14T09:30:00",
-    created: "2024-10-01T08:00:00",
-    calls: 512,
-  },
-  {
-    id: 11,
-    name: "Staff Portal",
-    prefix: "ak_3e8a6f",
-    scopes: ["read:staff", "write:staff"],
-    active: false,
-    expired: false,
-    expires: null,
-    lastUsed: "2024-12-01T12:00:00",
-    created: "2024-11-01T09:00:00",
-    calls: 980,
-  },
-  {
-    id: 12,
-    name: "Report Builder",
-    prefix: "ak_7c1b4e",
-    scopes: ["read:reports", "export:data", "read:logs"],
-    active: true,
-    expired: false,
-    expires: "2025-03-31",
-    lastUsed: "2024-12-11T16:00:00",
-    created: "2024-11-15T10:00:00",
-    calls: 267,
-  },
-];
-
-// ── Helpers ────────────────────────────────────────────────────────
 const fmtDate = (iso: string | null) =>
   iso
     ? new Date(iso).toLocaleDateString("en-UG", {
@@ -231,86 +58,152 @@ const fmtRel = (iso: string | null) => {
   return `${dy}d ago`;
 };
 
-const genKey = () =>
-  "ak_" +
-  Array.from(
-    { length: 32 },
-    () =>
-      "abcdefghijklmnopqrstuvwxyz0123456789"[Math.floor(Math.random() * 36)],
-  ).join("");
-
 // ── Scope Selector ─────────────────────────────────────────────────
+
+const SCOPES_PAGE_SIZE = 10;
+
 const ScopeSelector = ({
+  all,
   selected,
   onChange,
 }: {
+  all: Scope[];
   selected: string[];
-  onChange: (scopes: string[]) => void;
+  onChange: (uuids: string[]) => void;
 }) => {
-  const toggle = (v: string) =>
+  const [visibleCount, setVisibleCount] = useState(SCOPES_PAGE_SIZE);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const scopes = Array.isArray(all) ? all : [];
+  const visible = scopes.slice(0, visibleCount);
+  const allIds = scopes.map((s) => s.internal_base_uuid);
+  const allSelected =
+    allIds.length > 0 && allIds.every((id) => selected.includes(id));
+  const someSelected =
+    !allSelected && allIds.some((id) => selected.includes(id));
+
+  const toggle = (id: string) =>
     onChange(
-      selected.includes(v) ? selected.filter((s) => s !== v) : [...selected, v],
+      selected.includes(id)
+        ? selected.filter((s) => s !== id)
+        : [...selected, id],
     );
 
+  const toggleAll = () => onChange(allSelected ? [] : allIds);
+
+  const handleScroll = useCallback(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 8) {
+      setVisibleCount((c) => Math.min(c + SCOPES_PAGE_SIZE, scopes.length));
+    }
+  }, [scopes.length]);
+
+  const selectAllRef = useCallback(
+    (el: HTMLInputElement | null) => {
+      if (el) el.indeterminate = someSelected;
+    },
+    [someSelected],
+  );
+
   return (
-    <div className="grid grid-cols-2 gap-1.5">
-      {ALL_SCOPES.map((s) => (
-        <label
-          key={s.v}
-          className={`flex items-start gap-2 p-2 rounded-lg border cursor-pointer transition-colors ${
-            selected.includes(s.v)
-              ? "border-primary bg-primary/5"
-              : "border-slate-200 hover:border-slate-300"
-          }`}
-        >
+    <div className="space-y-2">
+      {/* Select all row */}
+      <div className="flex items-center justify-between px-1">
+        <label className="flex items-center gap-2 cursor-pointer select-none">
           <input
             type="checkbox"
-            checked={selected.includes(s.v)}
-            onChange={() => toggle(s.v)}
-            className="mt-0.5 accent-primary shrink-0"
+            ref={selectAllRef}
+            checked={allSelected}
+            onChange={toggleAll}
+            className="accent-primary"
           />
-          <div>
-            <div className="text-xs font-medium text-slate-700">{s.l}</div>
-            <div className="text-[10px] text-slate-400 font-mono">{s.d}</div>
-          </div>
+          <span className="text-xs font-semibold text-slate-600">
+            {allSelected ? "Deselect all" : "Select all"}
+          </span>
         </label>
-      ))}
+        <span className="text-[10px] text-slate-400 tabular-nums">
+          {selected.length} / {scopes.length} selected
+        </span>
+      </div>
+
+      {/* Scrollable grid */}
+      <div
+        ref={containerRef}
+        onScroll={handleScroll}
+        className="grid grid-cols-2 gap-1.5 max-h-56 overflow-y-auto pr-0.5"
+      >
+        {visible.map((s) => {
+          const id = s.internal_base_uuid;
+          const checked = selected.includes(id);
+          return (
+            <label
+              key={id}
+              className={`flex items-start gap-2 p-2 rounded-lg border cursor-pointer transition-colors ${
+                checked
+                  ? "border-primary bg-primary/5"
+                  : "border-slate-200 hover:border-slate-300"
+              }`}
+            >
+              <input
+                type="checkbox"
+                checked={checked}
+                onChange={() => toggle(id)}
+                className="mt-0.5 accent-primary shrink-0"
+              />
+              <div className="min-w-0">
+                <div className="text-xs font-medium text-slate-700 truncate">
+                  {s.label}
+                </div>
+                <div className="text-[10px] text-slate-400 font-mono truncate">
+                  {s.description}
+                </div>
+              </div>
+            </label>
+          );
+        })}
+
+        {visibleCount < scopes.length && (
+          <div className="col-span-2 flex items-center justify-center py-2 gap-1.5 text-xs text-slate-400">
+            <Icon
+              icon="hugeicons:loading-03"
+              className="animate-spin text-sm"
+            />
+            Scroll for more…
+          </div>
+        )}
+      </div>
     </div>
   );
 };
 
 // ── Create Modal ───────────────────────────────────────────────────
+
 const CreateModal = ({
+  allScopes,
   onClose,
-  onCreate,
+  onCreated,
 }: {
+  allScopes: Scope[];
   onClose: () => void;
-  onCreate: (key: APIKey, plainKey: string) => void;
+  onCreated: (key: APIKey) => void;
 }) => {
   const [name, setName] = useState("");
-  const [scopes, setScopes] = useState<string[]>(["read:logs", "read:status"]);
+  const [scopeUuids, setScopeUuids] = useState<string[]>([]);
   const [expires, setExpires] = useState("");
-  const [saving, setSaving] = useState(false);
+  const createMutation = useCreateAPIKey();
 
   const handleCreate = async () => {
-    if (!name.trim() || scopes.length === 0) return;
-    setSaving(true);
-    await new Promise((r) => setTimeout(r, 600));
-    const full = genKey();
-    const newKey: APIKey = {
-      id: Date.now(),
+    const validUuids = scopeUuids.filter(Boolean);
+    if (!name.trim() || validUuids.length === 0) return;
+    const payload: CreateAPIKeyPayload = {
       name: name.trim(),
-      prefix: full.slice(0, 10),
-      scopes,
-      active: true,
-      expired: false,
-      expires: expires || null,
-      lastUsed: null,
-      created: new Date().toISOString(),
-      calls: 0,
+      scope_uuids: validUuids,
+      expires_at: expires ? new Date(expires).toISOString() : null,
     };
-    setSaving(false);
-    onCreate(newKey, full);
+    createMutation.mutate(payload, {
+      onSuccess: (data) => onCreated(data),
+    });
   };
 
   return (
@@ -327,7 +220,14 @@ const CreateModal = ({
             <Icon icon="hugeicons:cancel-01" className="text-base" />
           </button>
         </div>
+
         <div className="p-5 space-y-4">
+          {createMutation.isError && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700">
+              Failed to create key. Please try again.
+            </div>
+          )}
+
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-slate-500 uppercase tracking-wide block">
               Key Name <span className="text-red-400">*</span>
@@ -339,12 +239,18 @@ const CreateModal = ({
               onChange={(e) => setName(e.target.value)}
             />
           </div>
+
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-slate-500 uppercase tracking-wide block">
               Scopes <span className="text-red-400">*</span>
             </label>
-            <ScopeSelector selected={scopes} onChange={setScopes} />
+            <ScopeSelector
+              all={allScopes}
+              selected={scopeUuids}
+              onChange={setScopeUuids}
+            />
           </div>
+
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-slate-500 uppercase tracking-wide block">
               Expires At <span className="text-slate-300">(optional)</span>
@@ -357,6 +263,7 @@ const CreateModal = ({
             />
           </div>
         </div>
+
         <div className="flex gap-2 px-5 pb-5">
           <button
             onClick={onClose}
@@ -366,10 +273,14 @@ const CreateModal = ({
           </button>
           <button
             onClick={handleCreate}
-            disabled={saving || !name.trim() || scopes.length === 0}
+            disabled={
+              createMutation.isPending ||
+              !name.trim() ||
+              scopeUuids.filter(Boolean).length === 0
+            }
             className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm bg-primary text-primary-foreground rounded-xl hover:bg-primary-hover transition-all disabled:opacity-50"
           >
-            {saving ? (
+            {createMutation.isPending ? (
               <>
                 <Icon
                   icon="hugeicons:loading-03"
@@ -391,23 +302,36 @@ const CreateModal = ({
 };
 
 // ── Edit Modal ─────────────────────────────────────────────────────
+
 const EditModal = ({
   apiKey,
+  allScopes,
   onClose,
-  onSave,
 }: {
   apiKey: APIKey;
+  allScopes: Scope[];
   onClose: () => void;
-  onSave: (
-    id: number,
-    name: string,
-    scopes: string[],
-    expires: string | null,
-  ) => void;
 }) => {
   const [name, setName] = useState(apiKey.name);
-  const [scopes, setScopes] = useState<string[]>([...apiKey.scopes]);
-  const [expires, setExpires] = useState(apiKey.expires || "");
+  const currentUuids = apiKey.scopes
+    .map((s: APIKeyScopeFlat) => s.internal_base_uuid ?? s.uuid)
+    .filter(Boolean) as string[];
+  const [scopeUuids, setScopeUuids] = useState<string[]>(currentUuids);
+  const [expires, setExpires] = useState(
+    apiKey.expires_at ? apiKey.expires_at.split("T")[0] : "",
+  );
+  const updateMutation = useUpdateAPIKey(apiKey.internal_base_uuid);
+
+  const handleSave = () => {
+    const validUuids = scopeUuids.filter(Boolean);
+    if (!name.trim() || validUuids.length === 0) return;
+    const payload: UpdateAPIKeyPayload = {
+      name: name.trim(),
+      scope_uuids: validUuids,
+      expires_at: expires ? new Date(expires).toISOString() : null,
+    };
+    updateMutation.mutate(payload, { onSuccess: onClose });
+  };
 
   return (
     <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
@@ -421,7 +345,14 @@ const EditModal = ({
             <Icon icon="hugeicons:cancel-01" className="text-base" />
           </button>
         </div>
+
         <div className="p-5 space-y-4">
+          {updateMutation.isError && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-700">
+              Failed to save changes. Please try again.
+            </div>
+          )}
+
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-slate-500 uppercase tracking-wide block">
               Key Name
@@ -432,12 +363,18 @@ const EditModal = ({
               onChange={(e) => setName(e.target.value)}
             />
           </div>
+
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-slate-500 uppercase tracking-wide block">
               Scopes
             </label>
-            <ScopeSelector selected={scopes} onChange={setScopes} />
+            <ScopeSelector
+              all={allScopes}
+              selected={scopeUuids}
+              onChange={setScopeUuids}
+            />
           </div>
+
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-slate-500 uppercase tracking-wide block">
               Expires At <span className="text-slate-300">(optional)</span>
@@ -450,6 +387,7 @@ const EditModal = ({
             />
           </div>
         </div>
+
         <div className="flex gap-2 px-5 pb-5">
           <button
             onClick={onClose}
@@ -458,13 +396,25 @@ const EditModal = ({
             Cancel
           </button>
           <button
-            onClick={() =>
-              onSave(apiKey.id, name.trim(), scopes, expires || null)
+            onClick={handleSave}
+            disabled={
+              updateMutation.isPending ||
+              !name.trim() ||
+              scopeUuids.filter(Boolean).length === 0
             }
-            disabled={!name.trim() || scopes.length === 0}
-            className="flex-1 px-4 py-2.5 text-sm bg-primary text-primary-foreground rounded-xl hover:bg-primary-hover transition-all disabled:opacity-50"
+            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm bg-primary text-primary-foreground rounded-xl hover:bg-primary-hover transition-all disabled:opacity-50"
           >
-            Save changes
+            {updateMutation.isPending ? (
+              <>
+                <Icon
+                  icon="hugeicons:loading-03"
+                  className="animate-spin text-base"
+                />
+                Saving…
+              </>
+            ) : (
+              "Save changes"
+            )}
           </button>
         </div>
       </div>
@@ -473,6 +423,7 @@ const EditModal = ({
 };
 
 // ── Reveal Modal ───────────────────────────────────────────────────
+
 const RevealModal = ({
   plainKey,
   onClose,
@@ -550,12 +501,15 @@ const RevealModal = ({
 };
 
 // ── Revoke Confirm Modal ───────────────────────────────────────────
+
 const RevokeModal = ({
   onCancel,
   onConfirm,
+  loading,
 }: {
   onCancel: () => void;
   onConfirm: () => void;
+  loading: boolean;
 }) => (
   <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
     <div className="bg-white rounded-2xl border border-slate-200 p-6 max-w-sm w-full shadow-xl">
@@ -572,15 +526,27 @@ const RevokeModal = ({
       <div className="flex gap-2">
         <button
           onClick={onCancel}
-          className="flex-1 px-4 py-2.5 text-sm border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-700 transition-colors"
+          disabled={loading}
+          className="flex-1 px-4 py-2.5 text-sm border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-700 transition-colors disabled:opacity-50"
         >
           Cancel
         </button>
         <button
           onClick={onConfirm}
-          className="flex-1 px-4 py-2.5 text-sm bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors font-medium"
+          disabled={loading}
+          className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors font-medium disabled:opacity-50"
         >
-          Revoke
+          {loading ? (
+            <>
+              <Icon
+                icon="hugeicons:loading-03"
+                className="animate-spin text-base"
+              />
+              Revoking…
+            </>
+          ) : (
+            "Revoke"
+          )}
         </button>
       </div>
     </div>
@@ -588,9 +554,12 @@ const RevokeModal = ({
 );
 
 // ── Usage Sidebar ──────────────────────────────────────────────────
+
 const UsageSidebar = ({ keys }: { keys: APIKey[] }) => {
-  const maxCalls = Math.max(...keys.map((k) => k.calls), 1);
-  const sorted = [...keys].sort((a, b) => b.calls - a.calls).slice(0, 8);
+  const maxCalls = Math.max(...keys.map((k) => k.request_log_count), 1);
+  const sorted = [...keys]
+    .sort((a, b) => b.request_log_count - a.request_log_count)
+    .slice(0, 8);
   return (
     <div className="flex flex-col gap-3">
       <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
@@ -600,27 +569,33 @@ const UsageSidebar = ({ keys }: { keys: APIKey[] }) => {
           </p>
         </div>
         <div className="p-4 space-y-3">
-          {sorted.map((k) => {
-            const pct = Math.round((k.calls / maxCalls) * 100);
-            return (
-              <div key={k.id}>
-                <div className="text-xs text-slate-700 mb-1 truncate font-medium">
-                  {k.name}
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-all ${pct > 70 ? "bg-amber-500" : "bg-primary"}`}
-                      style={{ width: `${pct}%` }}
-                    />
+          {sorted.length === 0 ? (
+            <p className="text-xs text-slate-400 text-center py-2">
+              No keys yet
+            </p>
+          ) : (
+            sorted.map((k) => {
+              const pct = Math.round((k.request_log_count / maxCalls) * 100);
+              return (
+                <div key={k.internal_base_uuid}>
+                  <div className="text-xs text-slate-700 mb-1 truncate font-medium">
+                    {k.name}
                   </div>
-                  <span className="text-xs text-slate-400 tabular-nums w-12 text-right">
-                    {k.calls.toLocaleString()}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all ${pct > 70 ? "bg-amber-500" : "bg-primary"}`}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                    <span className="text-xs text-slate-400 tabular-nums w-12 text-right">
+                      {k.request_log_count.toLocaleString()}
+                    </span>
+                  </div>
                 </div>
-              </div>
-            );
-          })}
+              );
+            })
+          )}
         </div>
       </div>
 
@@ -652,89 +627,49 @@ const UsageSidebar = ({ keys }: { keys: APIKey[] }) => {
 };
 
 // ── Main Page ──────────────────────────────────────────────────────
+
 export default function APIKeyManager() {
-  const [keys, setKeys] = useState<APIKey[]>(MOCK_KEYS);
   const [showCreate, setShowCreate] = useState(false);
   const [editKey, setEditKey] = useState<APIKey | null>(null);
   const [revealKey, setRevealKey] = useState<string | null>(null);
-  const [revokeId, setRevokeId] = useState<number | null>(null);
+  const [revokeUuid, setRevokeUuid] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(8);
 
-  // ── Handlers ──────────────────────────────────────────────────
-  const handleCreate = (newKey: APIKey, plain: string) => {
-    setKeys((prev) => [newKey, ...prev]);
+  const { data: scopesData, isLoading: scopesLoading } = useScopes();
+  const allScopes: Scope[] = scopesData?.results ?? [];
+
+  const { data, isLoading } = useAPIKeyList({
+    page,
+    page_size: pageSize,
+    search: search || undefined,
+    status: filterStatus !== "all" ? filterStatus : undefined,
+  });
+
+  const toggleMutation = useToggleAPIKey();
+  const revokeMutation = useRevokeAPIKey();
+
+  const keys: APIKey[] = data?.results ?? [];
+  const total = data?.count ?? 0;
+
+  const activeCount = keys.filter((k) => k.is_active && !k.is_expired).length;
+  const inactiveCount = keys.length - activeCount;
+
+  const handleCreated = (newKey: APIKey) => {
     setShowCreate(false);
-    setRevealKey(plain);
+    if (newKey.plaintext_key) setRevealKey(newKey.plaintext_key);
     setPage(1);
-    // POST /api/api-keys/ { name, scopes, expires_at }
-  };
-
-  const handleEdit = (
-    id: number,
-    name: string,
-    scopes: string[],
-    expires: string | null,
-  ) => {
-    setKeys((prev) =>
-      prev.map((k) => (k.id === id ? { ...k, name, scopes, expires } : k)),
-    );
-    setEditKey(null);
-    // PATCH /api/api-keys/{id}/ { name, scopes, expires_at }
-  };
-
-  const handleToggle = (id: number) => {
-    setKeys((prev) =>
-      prev.map((k) =>
-        k.id === id
-          ? {
-              ...k,
-              active: !k.active,
-              expired: k.expired && k.active ? false : k.expired,
-            }
-          : k,
-      ),
-    );
-    // PATCH /api/api-keys/{id}/ { is_active: !current }
   };
 
   const handleRevoke = () => {
-    if (revokeId === null) return;
-    setKeys((prev) => prev.filter((k) => k.id !== revokeId));
-    setRevokeId(null);
-    // DELETE /api/api-keys/{revokeId}/
+    if (!revokeUuid) return;
+    revokeMutation.mutate(revokeUuid, {
+      onSuccess: () => setRevokeUuid(null),
+    });
   };
 
-  // ── Filtering ────────────────────────────────────────────────
-  const filtered = keys.filter((k) => {
-    const q = search.toLowerCase();
-    const matchQ =
-      !q ||
-      k.name.toLowerCase().includes(q) ||
-      k.prefix.includes(q) ||
-      k.scopes.some((s) => s.includes(q));
-    const matchS =
-      filterStatus === "all" ||
-      (filterStatus === "active" && k.active && !k.expired) ||
-      (filterStatus === "inactive" && (!k.active || k.expired));
-    return matchQ && matchS;
-  });
-
-  const safePage = Math.min(
-    page,
-    Math.max(1, Math.ceil(filtered.length / pageSize)),
-  );
-  const pageRows = filtered.slice(
-    (safePage - 1) * pageSize,
-    safePage * pageSize,
-  );
-
-  const activeCount = keys.filter((k) => k.active && !k.expired).length;
-  const inactiveCount = keys.length - activeCount;
-
-  // ── Column definitions ───────────────────────────────────────
   const columns: Column<APIKey>[] = [
     {
       key: "key",
@@ -756,12 +691,12 @@ export default function APIKeyManager() {
       header: "Scopes",
       render: (k) => (
         <div className="flex flex-wrap gap-1">
-          {k.scopes.map((s) => (
+          {k.scopes.map((s: APIKeyScopeFlat) => (
             <span
-              key={s}
-              className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full border ${scopeColor(s)}`}
+              key={s.internal_base_uuid ?? s.uuid}
+              className={`text-[10px] font-medium px-1.5 py-0.5 rounded-full border ${scopeColor(s.value, allScopes)}`}
             >
-              {s}
+              {s.value}
             </span>
           ))}
         </div>
@@ -774,14 +709,14 @@ export default function APIKeyManager() {
       render: (k) => (
         <span
           className={`text-xs font-medium px-2 py-0.5 rounded-full border ${
-            k.expired
+            k.is_expired
               ? "bg-red-50 text-red-700 border-red-200"
-              : k.active
+              : k.is_active
                 ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                 : "bg-slate-100 text-slate-500 border-slate-200"
           }`}
         >
-          {k.expired ? "Expired" : k.active ? "Active" : "Inactive"}
+          {k.is_expired ? "Expired" : k.is_active ? "Active" : "Inactive"}
         </span>
       ),
     },
@@ -790,7 +725,7 @@ export default function APIKeyManager() {
       header: "Last used",
       className: "w-28",
       render: (k) => (
-        <span className="text-xs text-slate-400">{fmtRel(k.lastUsed)}</span>
+        <span className="text-xs text-slate-400">{fmtRel(k.last_used_at)}</span>
       ),
     },
     {
@@ -799,7 +734,7 @@ export default function APIKeyManager() {
       className: "w-28",
       render: (k) => (
         <span className="text-xs text-slate-400">
-          {k.expires ? fmtDate(k.expires) : "No expiry"}
+          {k.expires_at ? fmtDate(k.expires_at) : "No expiry"}
         </span>
       ),
     },
@@ -816,17 +751,18 @@ export default function APIKeyManager() {
             Edit
           </button>
           <button
-            onClick={() => handleToggle(k.id)}
-            className={`px-2.5 py-1 text-xs font-medium border rounded-lg transition-colors ${
-              k.active && !k.expired
+            onClick={() => toggleMutation.mutate(k.internal_base_uuid)}
+            disabled={toggleMutation.isPending}
+            className={`px-2.5 py-1 text-xs font-medium border rounded-lg transition-colors disabled:opacity-50 ${
+              k.is_active && !k.is_expired
                 ? "border-slate-200 text-slate-600 hover:bg-slate-50"
                 : "border-emerald-200 text-emerald-700 hover:bg-emerald-50"
             }`}
           >
-            {k.active && !k.expired ? "Disable" : "Enable"}
+            {k.is_active && !k.is_expired ? "Disable" : "Enable"}
           </button>
           <button
-            onClick={() => setRevokeId(k.id)}
+            onClick={() => setRevokeUuid(k.internal_base_uuid)}
             className="px-2.5 py-1 text-xs font-medium border border-red-200 rounded-lg hover:bg-red-50 transition-colors text-red-600"
           >
             Revoke
@@ -840,7 +776,7 @@ export default function APIKeyManager() {
     <div className="p-4 md:p-6 min-h-screen bg-slate-50">
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col lg:flex-row gap-4 items-start">
-          {/* ── Main column ─────────────────────────────────────── */}
+          {/* ── Main column ──────────────────────────────────────── */}
           <div className="flex-1 min-w-0 space-y-4">
             {/* Header */}
             <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -855,7 +791,8 @@ export default function APIKeyManager() {
               </div>
               <button
                 onClick={() => setShowCreate(true)}
-                className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary-hover transition-all"
+                disabled={scopesLoading}
+                className="flex items-center gap-2 px-4 py-2.5 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary-hover transition-all disabled:opacity-50"
               >
                 <Icon icon="hugeicons:add-circle" className="text-base" />
                 Create API Key
@@ -867,7 +804,7 @@ export default function APIKeyManager() {
               {[
                 {
                   label: "Total keys",
-                  value: keys.length,
+                  value: total,
                   icon: "hugeicons:key-01",
                   cls: "bg-slate-50 border-slate-200 text-slate-700",
                 },
@@ -926,7 +863,7 @@ export default function APIKeyManager() {
                 />
                 <input
                   className="w-full pl-8 pr-3 py-2 text-sm border border-slate-200 rounded-xl focus:outline-none focus:border-slate-400 bg-white text-slate-800"
-                  placeholder="Search by name, prefix or scope…"
+                  placeholder="Search by name…"
                   value={search}
                   onChange={(e) => {
                     setSearch(e.target.value);
@@ -948,14 +885,15 @@ export default function APIKeyManager() {
               </select>
             </div>
 
-            {/* ── PaginatedTable ──────────────────────────────────── */}
+            {/* Table */}
             <PaginatedTable<APIKey>
-              data={pageRows}
+              data={keys}
               columns={columns}
-              page={safePage}
+              page={page}
               pageSize={pageSize}
-              total={filtered.length}
-              onPageChange={(p) => setPage(p)}
+              total={total}
+              loading={isLoading}
+              onPageChange={setPage}
               onPageSizeChange={(s) => {
                 setPageSize(s);
                 setPage(1);
@@ -966,7 +904,7 @@ export default function APIKeyManager() {
             />
           </div>
 
-          {/* ── Sidebar ─────────────────────────────────────────── */}
+          {/* ── Sidebar ──────────────────────────────────────────── */}
           <div className="w-full lg:w-72 shrink-0">
             <UsageSidebar keys={keys} />
           </div>
@@ -976,24 +914,26 @@ export default function APIKeyManager() {
       {/* Modals */}
       {showCreate && (
         <CreateModal
+          allScopes={allScopes}
           onClose={() => setShowCreate(false)}
-          onCreate={handleCreate}
+          onCreated={handleCreated}
         />
       )}
       {editKey && (
         <EditModal
           apiKey={editKey}
+          allScopes={allScopes}
           onClose={() => setEditKey(null)}
-          onSave={handleEdit}
         />
       )}
       {revealKey && (
         <RevealModal plainKey={revealKey} onClose={() => setRevealKey(null)} />
       )}
-      {revokeId !== null && (
+      {revokeUuid !== null && (
         <RevokeModal
-          onCancel={() => setRevokeId(null)}
+          onCancel={() => setRevokeUuid(null)}
           onConfirm={handleRevoke}
+          loading={revokeMutation.isPending}
         />
       )}
     </div>

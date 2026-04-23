@@ -39,10 +39,10 @@ INSTALLED_APPS = [
     "django_celery_results",
     "users",
     "device",
-    "api_mgt",
     "system",
     "staff",
     "fingerprints",
+    "api_mgt",
 ]
 
 MIDDLEWARE = [
