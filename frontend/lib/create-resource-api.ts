@@ -10,7 +10,7 @@ export function createResourceAPI<
   return {
     getAll(params?: PaginationParams) {
       return apiClient
-        .get<PaginatedResponse<TModel>>(`${endpoint}/${buildQuery(params)}`)
+        .get<PaginatedResponse<TModel>>(`${endpoint}${buildQuery(params)}`)
         .then((r) => r.data);
     },
 

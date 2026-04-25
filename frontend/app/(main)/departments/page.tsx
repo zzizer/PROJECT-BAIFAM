@@ -1,96 +1,19 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Icon } from "@iconify/react";
 import PaginatedTable, {
   type Column,
 } from "@/components/commons/paginated-table";
+import { Department } from "@/types";
+import {
+  useDepartmentList,
+  useCreateDepartment,
+  useUpdateDepartment,
+  useDeleteDepartment,
+} from "@/hooks";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
-
-interface Department {
-  id: number;
-  ref_code: string;
-  name: string;
-  description: string;
-  staff_count: number;
-  created_at: string;
-}
-
-// ── Mock data ──────────────────────────────────────────────────────────────────
-
-const mockDepartments: Department[] = [
-  {
-    id: 1,
-    ref_code: "DEP-0001",
-    name: "IT",
-    description: "Infrastructure, software and systems management.",
-    staff_count: 5,
-    created_at: "2024-01-10",
-  },
-  {
-    id: 2,
-    ref_code: "DEP-0002",
-    name: "Operations",
-    description: "Day-to-day operational management.",
-    staff_count: 8,
-    created_at: "2024-01-10",
-  },
-  {
-    id: 3,
-    ref_code: "DEP-0003",
-    name: "Finance",
-    description: "Accounts, payroll and financial reporting.",
-    staff_count: 4,
-    created_at: "2024-01-10",
-  },
-  {
-    id: 4,
-    ref_code: "DEP-0004",
-    name: "HR",
-    description: "Recruitment, welfare and staff records.",
-    staff_count: 3,
-    created_at: "2024-01-12",
-  },
-  {
-    id: 5,
-    ref_code: "DEP-0005",
-    name: "Security",
-    description: "Physical security and access management.",
-    staff_count: 6,
-    created_at: "2024-01-15",
-  },
-  {
-    id: 6,
-    ref_code: "DEP-0006",
-    name: "Logistics",
-    description: "Supply chain and distribution operations.",
-    staff_count: 7,
-    created_at: "2024-02-01",
-  },
-  {
-    id: 7,
-    ref_code: "DEP-0007",
-    name: "Sales",
-    description: "Client relations and revenue operations.",
-    staff_count: 9,
-    created_at: "2024-02-10",
-  },
-];
-
-// ── Helpers ────────────────────────────────────────────────────────────────────
-
-const deptColors = [
-  "bg-blue-50 text-blue-700 border-blue-100",
-  "bg-emerald-50 text-emerald-700 border-emerald-100",
-  "bg-violet-50 text-violet-700 border-violet-100",
-  "bg-amber-50 text-amber-700 border-amber-100",
-  "bg-rose-50 text-rose-700 border-rose-100",
-  "bg-teal-50 text-teal-700 border-teal-100",
-  "bg-orange-50 text-orange-700 border-orange-100",
-];
-
-// ── Dialog ─────────────────────────────────────────────────────────────────────
 
 type DialogMode = "create" | "edit" | "delete" | "detail" | null;
 
@@ -106,51 +29,88 @@ interface DeptForm {
 
 const emptyForm: DeptForm = { name: "", description: "" };
 
+// ── Helpers ────────────────────────────────────────────────────────────────────
+
+const deptColors = [
+  "bg-blue-50 text-blue-700 border-blue-100",
+  "bg-emerald-50 text-emerald-700 border-emerald-100",
+  "bg-violet-50 text-violet-700 border-violet-100",
+  "bg-amber-50 text-amber-700 border-amber-100",
+  "bg-rose-50 text-rose-700 border-rose-100",
+  "bg-teal-50 text-teal-700 border-teal-100",
+  "bg-orange-50 text-orange-700 border-orange-100",
+];
+
 const inputCls =
   "w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-slate-400 bg-white text-slate-800 placeholder:text-slate-400";
 
-// ── Dialog component ───────────────────────────────────────────────────────────
+// ── Dialog Component ───────────────────────────────────────────────────────────
 
 const DepartmentDialog = ({
   state,
   onClose,
-  onSave,
+  onCreate,
+  onUpdate,
   onDelete,
   onRequestEdit,
 }: {
   state: DialogState;
   onClose: () => void;
-  onSave: (form: DeptForm, id?: number) => void;
-  onDelete: (id: number) => void;
+  onCreate: (form: DeptForm) => Promise<void>;
+  onUpdate: (uuid: string, form: DeptForm) => Promise<void>;
+  onDelete: (uuid: string) => Promise<void>;
   onRequestEdit: (dept: Department) => void;
 }) => {
   const { mode, dept } = state;
-  const [form, setForm] = useState<DeptForm>(
-    mode === "edit" && dept
-      ? { name: dept.name, description: dept.description }
-      : emptyForm,
-  );
+  const [form, setForm] = useState<DeptForm>(emptyForm);
   const [saving, setSaving] = useState(false);
+
+  // Reset form when dialog opens/changes
+  useEffect(() => {
+    if (mode === "edit" && dept) {
+      setForm({
+        name: dept.name,
+        description: dept.description ?? "",
+      });
+    } else if (mode === "create") {
+      setForm(emptyForm);
+    }
+  }, [mode, dept]);
 
   if (!mode) return null;
 
   const handleSave = async () => {
     if (!form.name.trim()) return;
     setSaving(true);
-    await new Promise((r) => setTimeout(r, 600));
-    setSaving(false);
-    onSave(form, dept?.id);
+    try {
+      if (mode === "edit" && dept?.internal_base_uuid) {
+        await onUpdate(dept.internal_base_uuid, form);
+      } else {
+        await onCreate(form);
+      }
+      onClose();
+    } catch (error) {
+      console.error("Failed to save department:", error);
+      // You can add toast notification here later
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleDelete = async () => {
-    if (!dept) return;
+    if (!dept?.internal_base_uuid) return;
     setSaving(true);
-    await new Promise((r) => setTimeout(r, 600));
-    setSaving(false);
-    onDelete(dept.id);
+    try {
+      await onDelete(dept.internal_base_uuid);
+      onClose();
+    } catch (error) {
+      console.error("Failed to delete department:", error);
+    } finally {
+      setSaving(false);
+    }
   };
 
-  // ── Delete confirmation ──
+  // Delete Confirmation Dialog
   if (mode === "delete") {
     return (
       <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
@@ -167,7 +127,7 @@ const DepartmentDialog = ({
           </p>
           <p className="text-xs text-slate-400 mb-5">
             Staff members in this department will have their department cleared.
-            This cannot be undone.
+            This action cannot be undone.
           </p>
           <div className="flex gap-2">
             <button
@@ -189,7 +149,7 @@ const DepartmentDialog = ({
     );
   }
 
-  // ── Detail view ──
+  // Detail View
   if (mode === "detail" && dept) {
     return (
       <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
@@ -217,7 +177,9 @@ const DepartmentDialog = ({
           <div className="p-5 space-y-4">
             <div className="flex items-center gap-3">
               <span
-                className={`text-xs font-medium px-2.5 py-1 rounded-full border ${deptColors[dept.id % deptColors.length]}`}
+                className={`text-xs font-medium px-2.5 py-1 rounded-full border ${
+                  deptColors[dept.id % deptColors.length]
+                }`}
               >
                 {dept.name}
               </span>
@@ -225,9 +187,16 @@ const DepartmentDialog = ({
                 {dept.ref_code}
               </span>
             </div>
+
             {[
               { label: "Description", value: dept.description || "—" },
-              { label: "Staff Members", value: `${dept.staff_count} assigned` },
+              {
+                label: "Staff Members",
+                value:
+                  dept.staff_count != null
+                    ? `${dept.staff_count} assigned`
+                    : "—",
+              },
               {
                 label: "Created",
                 value: new Date(dept.created_at).toLocaleDateString("en-UG", {
@@ -271,7 +240,7 @@ const DepartmentDialog = ({
     );
   }
 
-  // ── Create / Edit form ──
+  // Create / Edit Form
   return (
     <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl border border-slate-200 w-full max-w-md shadow-xl">
@@ -367,30 +336,32 @@ const DepartmentDialog = ({
   );
 };
 
-// ── Page ───────────────────────────────────────────────────────────────────────
+// ── Main Page ──────────────────────────────────────────────────────────────────
 
 export default function DepartmentsPage() {
-  const [departments, setDepartments] = useState<Department[]>(mockDepartments);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [dialog, setDialog] = useState<DialogState>({ mode: null, dept: null });
 
-  const filtered = useMemo(
-    () =>
-      departments.filter(
-        (d) =>
-          !search ||
-          d.name.toLowerCase().includes(search.toLowerCase()) ||
-          d.description.toLowerCase().includes(search.toLowerCase()),
-      ),
-    [departments, search],
+  const params = useMemo(
+    () => ({
+      page,
+      page_size: pageSize,
+      search: search.trim() || undefined,
+    }),
+    [page, pageSize, search],
   );
 
-  const paginated = useMemo(
-    () => filtered.slice((page - 1) * pageSize, page * pageSize),
-    [filtered, page, pageSize],
-  );
+  // Queries & Mutations — ALL at top level
+  const { data, isLoading, isFetching } = useDepartmentList(params);
+
+  const createMutation = useCreateDepartment();
+  const updateMutation = useUpdateDepartment();
+  const deleteMutation = useDeleteDepartment();
+
+  const departments: Department[] = data?.results ?? [];
+  const total = data?.count ?? 0;
 
   const openCreate = () => setDialog({ mode: "create", dept: null });
   const openEdit = (dept: Department) => setDialog({ mode: "edit", dept });
@@ -398,28 +369,16 @@ export default function DepartmentsPage() {
   const openDetail = (dept: Department) => setDialog({ mode: "detail", dept });
   const closeDialog = () => setDialog({ mode: null, dept: null });
 
-  const handleSave = (form: DeptForm, id?: number) => {
-    if (id) {
-      setDepartments((prev) =>
-        prev.map((d) => (d.id === id ? { ...d, ...form } : d)),
-      );
-    } else {
-      const newDept: Department = {
-        id: Date.now(),
-        ref_code: `DEP-${String(departments.length + 1).padStart(4, "0")}`,
-        staff_count: 0,
-        created_at: new Date().toISOString(),
-        ...form,
-      };
-      setDepartments((prev) => [newDept, ...prev]);
-      setPage(1);
-    }
-    closeDialog();
+  const handleCreate = async (form: DeptForm) => {
+    await createMutation.mutateAsync(form);
   };
 
-  const handleDelete = (id: number) => {
-    setDepartments((prev) => prev.filter((d) => d.id !== id));
-    closeDialog();
+  const handleUpdate = async (uuid: string, form: DeptForm) => {
+    await updateMutation.mutateAsync({ uuid, data: form });
+  };
+
+  const handleDelete = async (uuid: string) => {
+    await deleteMutation.mutateAsync(uuid);
   };
 
   const columns: Column<Department>[] = [
@@ -429,7 +388,9 @@ export default function DepartmentsPage() {
       render: (d) => (
         <div className="flex items-center gap-3">
           <div
-            className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold border ${deptColors[d.id % deptColors.length]}`}
+            className={`w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold border ${
+              deptColors[d.id % deptColors.length]
+            }`}
           >
             {d.name.slice(0, 2).toUpperCase()}
           </div>
@@ -460,7 +421,7 @@ export default function DepartmentsPage() {
             icon="hugeicons:user-group"
             className="text-sm text-slate-400"
           />
-          <span className="text-sm text-slate-600">{d.staff_count}</span>
+          <span className="text-sm text-slate-600">{d.staff_count ?? "—"}</span>
         </div>
       ),
     },
@@ -517,8 +478,7 @@ export default function DepartmentsPage() {
             Departments
           </h1>
           <p className="text-sm text-slate-500 mt-0.5">
-            {departments.length} departments &middot;{" "}
-            {departments.reduce((s, d) => s + d.staff_count, 0)} staff assigned
+            {total} department{total !== 1 ? "s" : ""}
           </p>
         </div>
         <button
@@ -550,16 +510,17 @@ export default function DepartmentsPage() {
 
       {/* Table */}
       <PaginatedTable
-        data={paginated}
+        data={departments}
         columns={columns}
         page={page}
         pageSize={pageSize}
-        total={filtered.length}
+        total={total}
         onPageChange={setPage}
         onPageSizeChange={(s) => {
           setPageSize(s);
           setPage(1);
         }}
+        loading={isLoading || isFetching}
         emptyIcon="hugeicons:building-04"
         emptyMessage="No departments found"
       />
@@ -568,7 +529,8 @@ export default function DepartmentsPage() {
       <DepartmentDialog
         state={dialog}
         onClose={closeDialog}
-        onSave={handleSave}
+        onCreate={handleCreate}
+        onUpdate={handleUpdate}
         onDelete={handleDelete}
         onRequestEdit={openEdit}
       />

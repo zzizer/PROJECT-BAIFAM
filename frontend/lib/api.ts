@@ -1,10 +1,3 @@
-/**
- * All AccessPi API endpoints.
- * Import from here everywhere — never import apiClient directly in components.
- *
- * @example
- * import { STAFF_API, AUTH_API } from "@/lib/api";
- */
 import { buildQuery } from "@/utils";
 import apiClient from "./api-client";
 import { createResourceAPI } from "./create-resource-api";
@@ -15,7 +8,12 @@ import type {
   Staff,
   CreateStaffPayload,
   UpdateStaffPayload,
+  Role,
+  CreateRolePayload,
+  UpdateRolePayload,
   Department,
+  CreateDepartmentPayload,
+  UpdateDepartmentPayload,
   Fingerprint,
   EnrollFingerprintPayload,
   AccessLog,
@@ -33,6 +31,7 @@ import type {
   APIKeyRequestLog,
 } from "@/types";
 
+// ── Auth ───────────────────────────────────────────────────────────────────────
 export const AUTH_API = {
   login: (data: LoginPayload) =>
     apiClient.post<LoginResponse>("/user/login/", data).then((r) => r.data),
@@ -45,39 +44,60 @@ export const AUTH_API = {
   logout: (refresh: string) => apiClient.post("/user/logout/", { refresh }),
 };
 
+// ── Staff ──────────────────────────────────────────────────────────────────────
 export const STAFF_API = createResourceAPI<
   Staff,
   CreateStaffPayload,
   UpdateStaffPayload
 >("/staff");
 
+// ── Roles ──────────────────────────────────────────────────────────────────────
+export const ROLES_API = createResourceAPI<
+  Role,
+  CreateRolePayload,
+  UpdateRolePayload
+>("/staff/roles");
+
+// ── Departments ────────────────────────────────────────────────────────────────
 export const DEPARTMENTS_API = createResourceAPI<
   Department,
-  Pick<Department, "name" | "description">
->("/departments");
+  CreateDepartmentPayload,
+  UpdateDepartmentPayload
+>("/staff/departments");
 
+// ── Fingerprints ───────────────────────────────────────────────────────────────
 export const FINGERPRINTS_API = createResourceAPI<
   Fingerprint,
   EnrollFingerprintPayload
->("/fingerprints");
+>("/fingerprints"); 
 
-export const LOGS_API = createResourceAPI<AccessLog>("/logs");
+// ── Access Logs ────────────────────────────────────────────────────────────────
+export const LOGS_API = createResourceAPI<AccessLog>(
+  "/fingerprints/access-logs",
+);
 
+// ── Access Rules ───────────────────────────────────────────────────────────────
 export const ACCESS_RULES_API = createResourceAPI<
   AccessRule,
   CreateAccessRulePayload
 >("/permissions/rules");
 
+// ── Schedules ──────────────────────────────────────────────────────────────────
 export const SCHEDULES_API = createResourceAPI<
   AccessSchedule,
   Pick<AccessSchedule, "name" | "days" | "time_from" | "time_to" | "is_active">
 >("/permissions/schedules");
 
+// ── Device Settings ────────────────────────────────────────────────────────────
+
 export const DEVICE_SETTINGS_API = {
   get: () => apiClient.get<DeviceSettings>("/settings/").then((r) => r.data),
+
   update: (data: UpdateDeviceSettingsPayload) =>
     apiClient.patch<DeviceSettings>("/settings/", data).then((r) => r.data),
 };
+
+// ── Scopes ─────────────────────────────────────────────────────────────────────
 
 export const SCOPES_API = {
   getAll: () =>
@@ -85,6 +105,8 @@ export const SCOPES_API = {
       .get<PaginatedResponse<Scope>>("/system/scopes/")
       .then((r) => r.data),
 };
+
+// ── API Keys ───────────────────────────────────────────────────────────────────
 
 export const API_KEYS_API = {
   getAll: (params?: PaginationParams & { status?: string }) =>
@@ -106,6 +128,8 @@ export const API_KEYS_API = {
 
   revoke: (uuid: string) => apiClient.delete(`/api-keys/${uuid}/`),
 };
+
+// ── API Key Request Logs ───────────────────────────────────────────────────────
 
 export const API_KEY_LOGS_API = {
   getAll: (params?: PaginationParams & { api_key?: string; method?: string }) =>

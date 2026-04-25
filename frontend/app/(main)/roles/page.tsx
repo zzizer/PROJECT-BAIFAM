@@ -1,74 +1,33 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { Icon } from "@iconify/react";
 import PaginatedTable, {
   type Column,
 } from "@/components/commons/paginated-table";
+import { Role } from "@/types";
+import {
+  useRoleList,
+  useCreateRole,
+  useUpdateRole,
+  useDeleteRole,
+} from "@/hooks";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
-interface Role {
-  id: number;
-  ref_code: string;
-  name: string;
-  description: string;
-  staff_count: number;
-  created_at: string;
+type DialogMode = "create" | "edit" | "delete" | "detail" | null;
+
+interface DialogState {
+  mode: DialogMode;
+  role: Role | null;
 }
 
-// ── Mock data ──────────────────────────────────────────────────────────────────
+interface RoleForm {
+  name: string;
+  description: string;
+}
 
-const mockRoles: Role[] = [
-  {
-    id: 1,
-    ref_code: "ROL-0001",
-    name: "Admin",
-    description: "Full system access and configuration rights.",
-    staff_count: 2,
-    created_at: "2024-01-10",
-  },
-  {
-    id: 2,
-    ref_code: "ROL-0002",
-    name: "Manager",
-    description: "Manage staff and view reports.",
-    staff_count: 4,
-    created_at: "2024-01-10",
-  },
-  {
-    id: 3,
-    ref_code: "ROL-0003",
-    name: "Employee",
-    description: "Standard door access during working hours.",
-    staff_count: 18,
-    created_at: "2024-01-10",
-  },
-  {
-    id: 4,
-    ref_code: "ROL-0004",
-    name: "Security",
-    description: "24-hour door access for security personnel.",
-    staff_count: 3,
-    created_at: "2024-01-12",
-  },
-  {
-    id: 5,
-    ref_code: "ROL-0005",
-    name: "Visitor",
-    description: "Temporary, time-limited access.",
-    staff_count: 1,
-    created_at: "2024-02-05",
-  },
-  {
-    id: 6,
-    ref_code: "ROL-0006",
-    name: "Contractor",
-    description: "Project-based access with expiry.",
-    staff_count: 5,
-    created_at: "2024-03-01",
-  },
-];
+const emptyForm: RoleForm = { name: "", description: "" };
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -81,67 +40,76 @@ const roleColors = [
   "bg-rose-50 text-rose-700 border-rose-100",
 ];
 
-// ── Dialog ─────────────────────────────────────────────────────────────────────
-
-type DialogMode = "create" | "edit" | "delete" | "detail" | null;
-
-interface DialogState {
-  mode: DialogMode;
-  role: Role | null;
-}
-
-// ── Form fields ────────────────────────────────────────────────────────────────
-
-interface RoleForm {
-  name: string;
-  description: string;
-}
-
-const emptyForm: RoleForm = { name: "", description: "" };
-
 const inputCls =
   "w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-slate-400 bg-white text-slate-800 placeholder:text-slate-400";
 
-// ── Dialog component ───────────────────────────────────────────────────────────
+// ── Dialog ─────────────────────────────────────────────────────────────────────
 
 const RoleDialog = ({
   state,
   onClose,
-  onSave,
+  onCreate,
+  onUpdate,
   onDelete,
+  onRequestEdit,
 }: {
   state: DialogState;
   onClose: () => void;
-  onSave: (form: RoleForm, id?: number) => void;
-  onDelete: (id: number) => void;
+  onCreate: (form: RoleForm) => Promise<void>;
+  onUpdate: (uuid: string, form: RoleForm) => Promise<void>;
+  onDelete: (uuid: string) => Promise<void>;
+  onRequestEdit: (role: Role) => void;
 }) => {
   const { mode, role } = state;
-  const [form, setForm] = useState<RoleForm>(
-    mode === "edit" && role
-      ? { name: role.name, description: role.description }
-      : emptyForm,
-  );
+  const [form, setForm] = useState<RoleForm>(emptyForm);
   const [saving, setSaving] = useState(false);
+
+  // Reset form when dialog mode or role changes
+  useEffect(() => {
+    if (mode === "edit" && role) {
+      setForm({
+        name: role.name,
+        description: role.description ?? "",
+      });
+    } else if (mode === "create") {
+      setForm(emptyForm);
+    }
+  }, [mode, role]);
 
   if (!mode) return null;
 
   const handleSave = async () => {
     if (!form.name.trim()) return;
     setSaving(true);
-    await new Promise((r) => setTimeout(r, 600));
-    setSaving(false);
-    onSave(form, role?.id);
+    try {
+      if (mode === "edit" && role?.internal_base_uuid) {
+        await onUpdate(role.internal_base_uuid, form);
+      } else {
+        await onCreate(form);
+      }
+      onClose();
+    } catch (error) {
+      console.error("Failed to save role:", error);
+      // TODO: Add toast notification here
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleDelete = async () => {
-    if (!role) return;
+    if (!role?.internal_base_uuid) return;
     setSaving(true);
-    await new Promise((r) => setTimeout(r, 600));
-    setSaving(false);
-    onDelete(role.id);
+    try {
+      await onDelete(role.internal_base_uuid);
+      onClose();
+    } catch (error) {
+      console.error("Failed to delete role:", error);
+    } finally {
+      setSaving(false);
+    }
   };
 
-  // ── Delete confirmation ──
+  // Delete Confirmation
   if (mode === "delete") {
     return (
       <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
@@ -180,7 +148,7 @@ const RoleDialog = ({
     );
   }
 
-  // ── Detail view ──
+  // Detail View
   if (mode === "detail" && role) {
     return (
       <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
@@ -204,10 +172,13 @@ const RoleDialog = ({
               <Icon icon="hugeicons:cancel-01" className="text-base" />
             </button>
           </div>
+
           <div className="p-5 space-y-4">
             <div className="flex items-center gap-3">
               <span
-                className={`text-xs font-medium px-2.5 py-1 rounded-full border capitalize ${roleColors[role.id % roleColors.length]}`}
+                className={`text-xs font-medium px-2.5 py-1 rounded-full border capitalize ${
+                  roleColors[role.id % roleColors.length]
+                }`}
               >
                 {role.name}
               </span>
@@ -215,9 +186,16 @@ const RoleDialog = ({
                 {role.ref_code}
               </span>
             </div>
+
             {[
               { label: "Description", value: role.description || "—" },
-              { label: "Staff Members", value: `${role.staff_count} assigned` },
+              {
+                label: "Staff Members",
+                value:
+                  role.staff_count != null
+                    ? `${role.staff_count} assigned`
+                    : "—",
+              },
               {
                 label: "Created",
                 value: new Date(role.created_at).toLocaleDateString("en-UG", {
@@ -240,6 +218,7 @@ const RoleDialog = ({
               </div>
             ))}
           </div>
+
           <div className="flex gap-2 px-5 pb-5">
             <button
               onClick={onClose}
@@ -248,12 +227,7 @@ const RoleDialog = ({
               Close
             </button>
             <button
-              onClick={() =>
-                onSave(
-                  { name: role.name, description: role.description },
-                  role.id,
-                )
-              }
+              onClick={() => onRequestEdit(role)}
               className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 text-sm bg-primary text-primary-foreground rounded-xl hover:bg-primary-hover transition-all"
             >
               <Icon icon="hugeicons:pencil-edit-02" className="text-base" />
@@ -265,7 +239,7 @@ const RoleDialog = ({
     );
   }
 
-  // ── Create / Edit form ──
+  // Create / Edit Form
   return (
     <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl border border-slate-200 w-full max-w-md shadow-xl">
@@ -361,30 +335,32 @@ const RoleDialog = ({
   );
 };
 
-// ── Page ───────────────────────────────────────────────────────────────────────
+// ── Main Page ──────────────────────────────────────────────────────────────────
 
 export default function RolesPage() {
-  const [roles, setRoles] = useState<Role[]>(mockRoles);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [dialog, setDialog] = useState<DialogState>({ mode: null, role: null });
 
-  const filtered = useMemo(
-    () =>
-      roles.filter(
-        (r) =>
-          !search ||
-          r.name.toLowerCase().includes(search.toLowerCase()) ||
-          r.description.toLowerCase().includes(search.toLowerCase()),
-      ),
-    [roles, search],
+  const params = useMemo(
+    () => ({
+      page,
+      page_size: pageSize,
+      search: search.trim() || undefined,
+    }),
+    [page, pageSize, search],
   );
 
-  const paginated = useMemo(
-    () => filtered.slice((page - 1) * pageSize, page * pageSize),
-    [filtered, page, pageSize],
-  );
+  // All hooks at top level
+  const { data, isLoading, isFetching } = useRoleList(params);
+
+  const createMutation = useCreateRole();
+  const updateMutation = useUpdateRole();
+  const deleteMutation = useDeleteRole();
+
+  const roles: Role[] = data?.results ?? [];
+  const total = data?.count ?? 0;
 
   const openCreate = () => setDialog({ mode: "create", role: null });
   const openEdit = (role: Role) => setDialog({ mode: "edit", role });
@@ -392,28 +368,16 @@ export default function RolesPage() {
   const openDetail = (role: Role) => setDialog({ mode: "detail", role });
   const closeDialog = () => setDialog({ mode: null, role: null });
 
-  const handleSave = (form: RoleForm, id?: number) => {
-    if (id) {
-      setRoles((prev) =>
-        prev.map((r) => (r.id === id ? { ...r, ...form } : r)),
-      );
-    } else {
-      const newRole: Role = {
-        id: Date.now(),
-        ref_code: `ROL-${String(roles.length + 1).padStart(4, "0")}`,
-        staff_count: 0,
-        created_at: new Date().toISOString(),
-        ...form,
-      };
-      setRoles((prev) => [newRole, ...prev]);
-      setPage(1);
-    }
-    closeDialog();
+  const handleCreate = async (form: RoleForm) => {
+    await createMutation.mutateAsync(form);
   };
 
-  const handleDelete = (id: number) => {
-    setRoles((prev) => prev.filter((r) => r.id !== id));
-    closeDialog();
+  const handleUpdate = async (uuid: string, form: RoleForm) => {
+    await updateMutation.mutateAsync({ uuid, data: form });
+  };
+
+  const handleDelete = async (uuid: string) => {
+    await deleteMutation.mutateAsync(uuid);
   };
 
   const columns: Column<Role>[] = [
@@ -423,7 +387,9 @@ export default function RolesPage() {
       render: (r) => (
         <div className="flex items-center gap-3">
           <span
-            className={`text-xs font-medium px-2.5 py-1 rounded-full border capitalize ${roleColors[r.id % roleColors.length]}`}
+            className={`text-xs font-medium px-2.5 py-1 rounded-full border capitalize ${
+              roleColors[r.id % roleColors.length]
+            }`}
           >
             {r.name}
           </span>
@@ -453,7 +419,7 @@ export default function RolesPage() {
             icon="hugeicons:user-group"
             className="text-sm text-slate-400"
           />
-          <span className="text-sm text-slate-600">{r.staff_count}</span>
+          <span className="text-sm text-slate-600">{r.staff_count ?? "—"}</span>
         </div>
       ),
     },
@@ -510,8 +476,7 @@ export default function RolesPage() {
             Roles
           </h1>
           <p className="text-sm text-slate-500 mt-0.5">
-            {roles.length} roles &middot;{" "}
-            {roles.reduce((s, r) => s + r.staff_count, 0)} staff assigned
+            {total} role{total !== 1 ? "s" : ""}
           </p>
         </div>
         <button
@@ -543,16 +508,17 @@ export default function RolesPage() {
 
       {/* Table */}
       <PaginatedTable
-        data={paginated}
+        data={roles}
         columns={columns}
         page={page}
         pageSize={pageSize}
-        total={filtered.length}
+        total={total}
         onPageChange={setPage}
         onPageSizeChange={(s) => {
           setPageSize(s);
           setPage(1);
         }}
+        loading={isLoading || isFetching}
         emptyIcon="hugeicons:shield-user"
         emptyMessage="No roles found"
       />
@@ -561,8 +527,10 @@ export default function RolesPage() {
       <RoleDialog
         state={dialog}
         onClose={closeDialog}
-        onSave={handleSave}
+        onCreate={handleCreate}
+        onUpdate={handleUpdate}
         onDelete={handleDelete}
+        onRequestEdit={openEdit}
       />
     </div>
   );

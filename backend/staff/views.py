@@ -4,11 +4,12 @@ from rest_framework import status
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema, OpenApiResponse
 from utils.pagination import CustomPageNumberPagination
-from .models import Staff, Department, Role
+from .models import Staff, Department, Role, AccessPermission
 from .serializers import (
     RoleSerializer,
     DepartmentSerializer,
     StaffSerializer,
+    AccessPermissionSerializer,
 )
 
 
@@ -56,14 +57,11 @@ class RoleDetailView(APIView):
     }
 
     def get_object(self, uuid):
-        return get_object_or_404(Role, base_uuid=uuid)
+        return get_object_or_404(Role, internal_base_uuid=uuid, deleted_at__isnull=True)
 
     @extend_schema(
         summary="Retrieve a role",
-        responses={
-            200: RoleSerializer,
-            404: OpenApiResponse(description="Not found"),
-        },
+        responses={200: RoleSerializer, 404: OpenApiResponse(description="Not found")},
         tags=["Roles"],
     )
     def get(self, request, uuid):
@@ -144,7 +142,9 @@ class DepartmentDetailView(APIView):
     }
 
     def get_object(self, uuid):
-        return get_object_or_404(Department, base_uuid=uuid)
+        return get_object_or_404(
+            Department, internal_base_uuid=uuid, deleted_at__isnull=True
+        )
 
     @extend_schema(
         summary="Retrieve a department",
@@ -204,9 +204,9 @@ class StaffListCreateView(APIView):
         tags=["Staff"],
     )
     def get(self, request):
-        staff = Staff.objects.select_related("role", "department").filter(
-            deleted_at__isnull=True
-        )
+        staff = Staff.objects.select_related(
+            "role", "department", "access_permission"
+        ).filter(deleted_at__isnull=True)
         paginator = CustomPageNumberPagination()
         page = paginator.paginate_queryset(staff, request)
         serializer = StaffSerializer(page, many=True)
@@ -214,7 +214,10 @@ class StaffListCreateView(APIView):
 
     @extend_schema(
         summary="Create a staff member",
-        description="Creates a staff member. Pass role and department as base_uuid values.",
+        description=(
+            "Creates a staff member. Pass role and department as internal_base_uuid values. "
+            "Access permission is NOT created here — use POST /staff/{uuid}/permission/ after creation."
+        ),
         request=StaffSerializer,
         responses={
             201: StaffSerializer,
@@ -238,9 +241,10 @@ class StaffDetailView(APIView):
 
     def get_object(self, uuid):
         return get_object_or_404(
-            Staff.objects.select_related("role", "department"),
-            base_uuid=uuid,
-        ).filter(deleted_at__isnull=True)
+            Staff.objects.select_related("role", "department", "access_permission"),
+            internal_base_uuid=uuid,
+            deleted_at__isnull=True,
+        )
 
     @extend_schema(
         summary="Retrieve a staff member",

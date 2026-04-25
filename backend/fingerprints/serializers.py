@@ -38,21 +38,43 @@ class FingerprintSerializer(BaseSerializer):
 
 
 class AccessLogSerializer(BaseSerializer):
+    staff_name = serializers.SerializerMethodField()
+    staff_employee_id = serializers.SerializerMethodField()
+    staff_role = serializers.SerializerMethodField()
+    granted = serializers.SerializerMethodField()
+    deny_reason_display = serializers.CharField(
+        source="deny_reason_display_value",
+        read_only=True,
+    )
+
     class Meta:
         model = AccessLog
-        fields = "__all__"
+        fields = [
+            "id",
+            "staff",
+            "staff_name",
+            "staff_employee_id",
+            "staff_role",
+            "fingerprint",
+            "result",
+            "granted",
+            "deny_reason",
+            "deny_reason_display",
+            "confidence",
+            "scanner_slot",
+            "timestamp",
+        ]
 
-    def to_representation(self, instance):
-        repr = super().to_representation(instance)
+    def get_staff_name(self, obj):
+        return obj.staff.full_name if obj.staff else "Unknown"
 
-        if instance.fingerprint:
-            repr["fingerprint"] = FingerprintSerializer(instance.fingerprint).data
+    def get_staff_employee_id(self, obj):
+        return getattr(obj.staff, "ref_code", "—") if obj.staff else "—"
 
-        if instance.staff:
-            repr["staff"] = {
-                "internal_base_uuid": instance.staff.internal_base_uuid,
-                "id": instance.staff.id,
-                "full_name": instance.staff.full_name,
-            }
+    def get_staff_role(self, obj):
+        if obj.staff and obj.staff.role:
+            return obj.staff.role.name
+        return "—"
 
-        return repr
+    def get_granted(self, obj):
+        return obj.result == AccessLog.RESULT_GRANTED

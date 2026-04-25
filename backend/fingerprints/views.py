@@ -13,6 +13,7 @@ from .serializers import (
     AccessLogSerializer,
     FingerprintSerializer,
 )
+from django.db.models import Count, Q
 
 
 class FingerprintListCreateView(APIView):
@@ -157,19 +158,36 @@ class AccessLogListView(APIView):
         start_date = request.query_params.get("start_date")
         end_date = request.query_params.get("end_date")
         if start_date and end_date:
-            logs = logs.filter(created_at__range=[start_date, end_date])
+            logs = logs.filter(timestamp__date__range=[start_date, end_date])
 
         if start_date and not end_date:
-            logs = logs.filter(created_at__gte=start_date)
+            logs = logs.filter(timestamp__date__gte=start_date)
 
         if end_date and not start_date:
-            logs = logs.filter(created_at__lte=end_date)
+            logs = logs.filter(timestamp__date__lte=end_date)
 
         result = request.query_params.get("result")
         if result in [AccessLog.RESULT_GRANTED, AccessLog.RESULT_DENIED]:
             logs = logs.filter(result=result)
 
+        aggregates = logs.aggregate(
+            total=Count("id"),
+            granted_count=Count("id", filter=Q(result=AccessLog.RESULT_GRANTED)),
+            denied_count=Count("id", filter=Q(result=AccessLog.RESULT_DENIED)),
+        )
+
         paginator = CustomPageNumberPagination()
-        page = paginator.paginate_queryset(logs, request)
+        page = paginator.paginate_queryset(
+            logs.select_related("staff", "staff__role", "fingerprint"), request
+        )
         serializer = AccessLogSerializer(page, many=True)
-        return paginator.get_paginated_response(serializer.data)
+        return Response(
+            {
+                "count": aggregates["total"],
+                "granted_count": aggregates["granted_count"],
+                "denied_count": aggregates["denied_count"],
+                "next": paginator.get_next_link(),
+                "previous": paginator.get_previous_link(),
+                "results": serializer.data,
+            }
+        )

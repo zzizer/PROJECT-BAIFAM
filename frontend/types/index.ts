@@ -1,8 +1,12 @@
+// ── Pagination ─────────────────────────────────────────────────────────────────
+
 export interface PaginatedResponse<T> {
   count: number;
   next: string | null;
   previous: string | null;
   results: T[];
+  granted_count?: number;
+  denied_count?: number;
 }
 
 export interface PaginationParams {
@@ -12,6 +16,8 @@ export interface PaginationParams {
   ordering?: string;
   [key: string]: unknown;
 }
+
+// ── Auth ───────────────────────────────────────────────────────────────────────
 
 export interface User {
   id: number;
@@ -30,47 +36,87 @@ export interface LoginPayload {
   email: string;
   password: string;
 }
+
 export interface LoginResponse {
   access: string;
   refresh: string;
   user: User;
 }
+
 export interface RefreshTokenResponse {
   access: string;
   refresh: string;
 }
 
-export interface Department {
+// ── Roles ──────────────────────────────────────────────────────────────────────
+
+export interface Role {
   id: number;
+  internal_base_uuid: string;
   ref_code: string;
   name: string;
-  description: string | null;
+  description: string;
+  staff_count?: number;
   created_at: string;
   updated_at: string;
 }
 
+export interface CreateRolePayload {
+  name: string;
+  description?: string;
+}
+
+export type UpdateRolePayload = Partial<CreateRolePayload>;
+
+// ── Departments ────────────────────────────────────────────────────────────────
+
+export interface Department {
+  id: number;
+  internal_base_uuid: string;
+  ref_code: string;
+  name: string;
+  description: string | null;
+  staff_count?: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateDepartmentPayload {
+  name: string;
+  description?: string;
+}
+
+export type UpdateDepartmentPayload = Partial<CreateDepartmentPayload>;
+
+// ── Staff ──────────────────────────────────────────────────────────────────────
+
 export interface Staff {
   id: number;
+  internal_base_uuid: string;
   ref_code: string;
-  fullname: string;
+  full_name: string;
   email: string;
-  phone: string | null;
+  phone_number: string | null;
+  role: Role | null;
   department: Department | null;
-  department_id: number | null;
   is_active: boolean;
   created_at: string;
   updated_at: string;
 }
 
 export interface CreateStaffPayload {
-  fullname: string;
+  full_name: string;
   email?: string;
-  phone?: string;
-  department_id?: number;
+  phone_number?: string;
+  role_uuid?: string;
+  department_uuid?: string;
 }
+
 export interface UpdateStaffPayload extends Partial<CreateStaffPayload> {
   is_active?: boolean;
 }
+
+// ── Fingerprints ───────────────────────────────────────────────────────────────
 
 export type FingerprintStatus = "active" | "inactive" | "pending";
 
@@ -91,17 +137,25 @@ export interface EnrollFingerprintPayload {
   finger_index: number;
 }
 
+// ── Access Logs ────────────────────────────────────────────────────────────────
+
 export type AccessResult = "granted" | "denied";
 
 export interface AccessLog {
   id: number;
-  ref_code: string;
-  staff: number | null;
-  staff_name: string | null;
-  result: AccessResult;
-  reason: string | null;
+  staff_name: string;
+  staff_employee_id: string;
+  staff_role: string;
+  scanner_slot: number | null;
+  confidence: number;
+  granted: boolean;
+  deny_reason: string;
+  deny_reason_display: string;
   timestamp: string;
+  result: AccessResult;
 }
+
+// ── Access Schedules & Rules ───────────────────────────────────────────────────
 
 export type ScheduleDay =
   | "monday"
@@ -141,6 +195,8 @@ export interface CreateAccessRulePayload {
   is_active?: boolean;
 }
 
+// ── Device Settings ────────────────────────────────────────────────────────────
+
 export interface DeviceSettings {
   id: number;
   device_name: string;
@@ -155,6 +211,8 @@ export interface DeviceSettings {
 export type UpdateDeviceSettingsPayload = Partial<
   Omit<DeviceSettings, "id" | "updated_at">
 >;
+
+// ── API Key Management ─────────────────────────────────────────────────────────
 
 export interface Scope {
   id: number;
@@ -201,7 +259,7 @@ export interface APIKey {
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
-  plaintext_key?: string; // only present on the create response
+  plaintext_key?: string;
 }
 
 export interface CreateAPIKeyPayload {
