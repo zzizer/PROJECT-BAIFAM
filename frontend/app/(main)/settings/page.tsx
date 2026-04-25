@@ -1,10 +1,14 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Icon } from "@iconify/react";
+import { toast } from "sonner";
+
+import { useDeviceSettings, useUpdateDeviceSettings } from "@/hooks";
+import type { DeviceSettings, UpdateDeviceSettingsPayload } from "@/types";
 
 // ── Types ──────────────────────────────────────────────────────────
-interface Settings {
+interface SettingsForm {
   device_name: string;
   device_location: string;
   timezone: string;
@@ -18,51 +22,7 @@ interface Settings {
   max_duration_before_sleep_if_idle: number;
 }
 
-interface DeviceInfo {
-  serial_number: string;
-  device_model: string;
-  hardware_version: string;
-  firmware_version: string;
-}
-
-// ── Mock data ──────────────────────────────────────────────────────
-const initialSettings: Settings = {
-  device_name: "BAIFAM Device",
-  device_location: "Main Entrance",
-  timezone: "Africa/Kampala",
-  unlock_duration_sec: 3,
-  require_2finger_confirm: false,
-  allow_unknown_finger_log: false,
-  buzzer_enabled: true,
-  buzzer_volume: 80,
-  lockout_duration_mins: 10,
-  max_failed_attempts: 5,
-  max_duration_before_sleep_if_idle: 5,
-};
-
-const deviceInfo: DeviceInfo = {
-  serial_number: "APi-2024-0001",
-  device_model: "AccessPi Pro",
-  hardware_version: "v1.2.0",
-  firmware_version: "v2.4.1",
-};
-
-const TIMEZONES = [
-  "UTC",
-  "Africa/Kampala",
-  "Africa/Nairobi",
-  "Africa/Lagos",
-  "Africa/Johannesburg",
-  "Africa/Cairo",
-  "Europe/London",
-  "Europe/Paris",
-  "America/New_York",
-  "America/Los_Angeles",
-  "Asia/Dubai",
-  "Asia/Kolkata",
-];
-
-// ── Sub-components ─────────────────────────────────────────────────
+// ── Sub-components (unchanged) ─────────────────────────────────────
 
 const SectionHeader = ({
   icon,
@@ -152,7 +112,7 @@ const NumberInput = ({
         min={min}
         max={max}
         onChange={(e) =>
-          onChange(Math.min(max, Math.max(min, Number(e.target.value))))
+          onChange(Math.min(max, Math.max(min, Number(e.target.value) || min)))
         }
         className="w-14 text-center text-sm font-medium text-slate-800 border-x border-slate-200 py-1.5 focus:outline-none bg-white"
       />
@@ -214,26 +174,96 @@ const Card = ({ children }: { children: React.ReactNode }) => (
 
 // ── Main Page ──────────────────────────────────────────────────────
 export default function SettingsPage() {
-  const [settings, setSettings] = useState<Settings>(initialSettings);
-  const [saved, setSaved] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const { data: settingsData, isLoading } = useDeviceSettings();
+  const updateDeviceSettings = useUpdateDeviceSettings();
 
-  const update = <K extends keyof Settings>(key: K, value: Settings[K]) => {
+  const [settings, setSettings] = useState<SettingsForm>({
+    device_name: "",
+    device_location: "",
+    timezone: "Africa/Kampala",
+    unlock_duration_sec: 3,
+    require_2finger_confirm: false,
+    allow_unknown_finger_log: false,
+    buzzer_enabled: true,
+    buzzer_volume: 80,
+    lockout_duration_mins: 10,
+    max_failed_attempts: 5,
+    max_duration_before_sleep_if_idle: 5,
+  });
+
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  // Populate form when data loads
+  useEffect(() => {
+    if (settingsData) {
+      setSettings({
+        device_name: settingsData.device_name,
+        device_location: settingsData.device_location || "",
+        timezone: settingsData.timezone,
+        unlock_duration_sec: settingsData.unlock_duration_sec,
+        require_2finger_confirm: settingsData.require_2finger_confirm,
+        allow_unknown_finger_log: settingsData.allow_unknown_finger_log,
+        buzzer_enabled: settingsData.buzzer_enabled,
+        buzzer_volume: settingsData.buzzer_volume,
+        lockout_duration_mins: settingsData.lockout_duration_mins,
+        max_failed_attempts: settingsData.max_failed_attempts,
+        max_duration_before_sleep_if_idle:
+          settingsData.max_duration_before_sleep_if_idle,
+      });
+    }
+  }, [settingsData]);
+
+  const update = <K extends keyof SettingsForm>(
+    key: K,
+    value: SettingsForm[K],
+  ) => {
     setSaved(false);
     setSettings((prev) => ({ ...prev, [key]: value }));
   };
 
   const handleSave = async () => {
     setSaving(true);
-    // Replace with: await fetch('/api/settings/', { method: 'PATCH', body: JSON.stringify(settings) })
-    await new Promise((r) => setTimeout(r, 800));
-    setSaving(false);
-    setSaved(true);
+    setSaved(false);
+
+    const payload: UpdateDeviceSettingsPayload = {
+      device_name: settings.device_name,
+      device_location: settings.device_location || null,
+      timezone: settings.timezone,
+      unlock_duration_sec: settings.unlock_duration_sec,
+      require_2finger_confirm: settings.require_2finger_confirm,
+      allow_unknown_finger_log: settings.allow_unknown_finger_log,
+      buzzer_enabled: settings.buzzer_enabled,
+      buzzer_volume: settings.buzzer_volume,
+      lockout_duration_mins: settings.lockout_duration_mins,
+      max_failed_attempts: settings.max_failed_attempts,
+      max_duration_before_sleep_if_idle:
+        settings.max_duration_before_sleep_if_idle,
+    };
+
+    try {
+      await updateDeviceSettings.mutateAsync(payload);
+      toast.success("Settings saved successfully");
+      setSaved(true);
+    } catch (error) {
+      toast.error("Failed to save settings");
+      console.error(error);
+    } finally {
+      setSaving(false);
+    }
   };
+
+  if (isLoading) {
+    return (
+      <div className="p-6 max-w-5xl mx-auto flex items-center justify-center min-h-[60vh]">
+        <p className="text-slate-500">Loading device settings...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-6">
-      {/* ── Page header ── */}
+      {/* Page Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-800 tracking-tight">
@@ -274,7 +304,7 @@ export default function SettingsPage() {
         </button>
       </div>
 
-      {/* ── Device Identity ── */}
+      {/* Device Identity */}
       <Card>
         <SectionHeader
           icon="hugeicons:building-04"
@@ -317,7 +347,7 @@ export default function SettingsPage() {
         </FieldRow>
       </Card>
 
-      {/* ── Door & Hardware ── */}
+      {/* Door & Hardware - unchanged UI */}
       <Card>
         <SectionHeader
           icon="hugeicons:lock-password"
@@ -348,7 +378,7 @@ export default function SettingsPage() {
         >
           <div
             className={
-              settings.buzzer_enabled ? "" : "opacity-40 pointer-events-none"
+              !settings.buzzer_enabled ? "opacity-40 pointer-events-none" : ""
             }
           >
             <SliderInput
@@ -374,7 +404,7 @@ export default function SettingsPage() {
         </FieldRow>
       </Card>
 
-      {/* ── Access & Security ── */}
+      {/* Access & Security */}
       <Card>
         <SectionHeader
           icon="hugeicons:shield-key"
@@ -416,7 +446,7 @@ export default function SettingsPage() {
         </FieldRow>
         <FieldRow
           label="2-Finger Confirmation"
-          hint="Sensitive actions (delete fingerprint, deactivate staff) require operator fingerprint scan"
+          hint="Sensitive actions require operator fingerprint scan"
         >
           <Toggle
             checked={settings.require_2finger_confirm}
@@ -425,7 +455,7 @@ export default function SettingsPage() {
         </FieldRow>
       </Card>
 
-      {/* ── Device Info — read only ── */}
+      {/* Device Info (Read Only) */}
       <Card>
         <SectionHeader
           icon="hugeicons:information-circle"
@@ -438,7 +468,7 @@ export default function SettingsPage() {
         <InfoRow label="Firmware Version" value={deviceInfo.firmware_version} />
       </Card>
 
-      {/* ── Danger Zone ── */}
+      {/* Danger Zone */}
       <div className="bg-white rounded-2xl border border-red-100 p-6">
         <SectionHeader
           icon="hugeicons:alert-02"
@@ -451,8 +481,7 @@ export default function SettingsPage() {
               Reset to Factory Defaults
             </p>
             <p className="text-xs text-slate-400 mt-0.5">
-              Restores all settings above to their original values. Does not
-              affect enrolled fingerprints or staff.
+              Restores all settings above to their original values.
             </p>
           </div>
           <button className="px-4 py-2 text-sm font-medium text-red-600 border border-red-200 rounded-xl hover:bg-red-50 transition-colors shrink-0 ml-6">

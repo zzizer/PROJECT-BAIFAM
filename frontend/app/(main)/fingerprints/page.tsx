@@ -6,196 +6,9 @@ import Link from "next/link";
 import PaginatedTable, {
   type Column,
 } from "@/components/commons/paginated-table";
-
-// ── Types ──────────────────────────────────────────────────────────
-interface Fingerprint {
-  id: number;
-  scanner_id: number;
-  finger: string;
-  finger_display: string;
-  label: string;
-  is_active: boolean;
-  enrolled_at: string;
-  staff_id: number;
-  staff_name: string;
-  staff_employee_id: string;
-  staff_role: string;
-}
-
-// ── Mock data ──────────────────────────────────────────────────────
-const mockFingerprints: Fingerprint[] = [
-  {
-    id: 1,
-    scanner_id: 0,
-    finger: "right_thumb",
-    finger_display: "Right Thumb",
-    label: "Primary",
-    is_active: true,
-    enrolled_at: "2024-01-10T09:00:00",
-    staff_id: 1,
-    staff_name: "Samuel Okello",
-    staff_employee_id: "EMP-0001",
-    staff_role: "admin",
-  },
-  {
-    id: 2,
-    scanner_id: 1,
-    finger: "left_index",
-    finger_display: "Left Index",
-    label: "Secondary",
-    is_active: true,
-    enrolled_at: "2024-01-10T09:15:00",
-    staff_id: 1,
-    staff_name: "Samuel Okello",
-    staff_employee_id: "EMP-0001",
-    staff_role: "admin",
-  },
-  {
-    id: 3,
-    scanner_id: 2,
-    finger: "right_thumb",
-    finger_display: "Right Thumb",
-    label: "Primary",
-    is_active: true,
-    enrolled_at: "2024-01-12T10:00:00",
-    staff_id: 2,
-    staff_name: "Grace Nakato",
-    staff_employee_id: "EMP-0002",
-    staff_role: "manager",
-  },
-  {
-    id: 4,
-    scanner_id: 3,
-    finger: "right_thumb",
-    finger_display: "Right Thumb",
-    label: "Primary",
-    is_active: true,
-    enrolled_at: "2024-01-15T08:30:00",
-    staff_id: 3,
-    staff_name: "Brian Mutesasira",
-    staff_employee_id: "EMP-0003",
-    staff_role: "employee",
-  },
-  {
-    id: 5,
-    scanner_id: 4,
-    finger: "left_thumb",
-    finger_display: "Left Thumb",
-    label: "Backup",
-    is_active: true,
-    enrolled_at: "2024-01-15T08:45:00",
-    staff_id: 3,
-    staff_name: "Brian Mutesasira",
-    staff_employee_id: "EMP-0003",
-    staff_role: "employee",
-  },
-  {
-    id: 6,
-    scanner_id: 5,
-    finger: "right_index",
-    finger_display: "Right Index",
-    label: "Primary",
-    is_active: true,
-    enrolled_at: "2024-01-18T11:00:00",
-    staff_id: 4,
-    staff_name: "Alice Namutebi",
-    staff_employee_id: "EMP-0004",
-    staff_role: "employee",
-  },
-  {
-    id: 7,
-    scanner_id: 6,
-    finger: "right_thumb",
-    finger_display: "Right Thumb",
-    label: "Primary",
-    is_active: true,
-    enrolled_at: "2024-02-01T07:45:00",
-    staff_id: 5,
-    staff_name: "David Ssemakula",
-    staff_employee_id: "EMP-0005",
-    staff_role: "security",
-  },
-  {
-    id: 8,
-    scanner_id: 7,
-    finger: "left_thumb",
-    finger_display: "Left Thumb",
-    label: "Secondary",
-    is_active: true,
-    enrolled_at: "2024-02-01T07:55:00",
-    staff_id: 5,
-    staff_name: "David Ssemakula",
-    staff_employee_id: "EMP-0005",
-    staff_role: "security",
-  },
-  {
-    id: 9,
-    scanner_id: 8,
-    finger: "right_middle",
-    finger_display: "Right Middle",
-    label: "Backup",
-    is_active: true,
-    enrolled_at: "2024-02-01T08:05:00",
-    staff_id: 5,
-    staff_name: "David Ssemakula",
-    staff_employee_id: "EMP-0005",
-    staff_role: "security",
-  },
-  {
-    id: 10,
-    scanner_id: 9,
-    finger: "right_thumb",
-    finger_display: "Right Thumb",
-    label: "Primary",
-    is_active: true,
-    enrolled_at: "2024-02-05T09:30:00",
-    staff_id: 6,
-    staff_name: "Ruth Namukasa",
-    staff_employee_id: "EMP-0006",
-    staff_role: "employee",
-  },
-  {
-    id: 11,
-    scanner_id: 10,
-    finger: "right_index",
-    finger_display: "Right Index",
-    label: "Primary",
-    is_active: false,
-    enrolled_at: "2024-02-10T10:00:00",
-    staff_id: 7,
-    staff_name: "Moses Kiggundu",
-    staff_employee_id: "EMP-0007",
-    staff_role: "visitor",
-  },
-  {
-    id: 12,
-    scanner_id: 11,
-    finger: "right_thumb",
-    finger_display: "Right Thumb",
-    label: "Primary",
-    is_active: true,
-    enrolled_at: "2024-02-14T08:00:00",
-    staff_id: 8,
-    staff_name: "Esther Nalwoga",
-    staff_employee_id: "EMP-0008",
-    staff_role: "employee",
-  },
-  {
-    id: 13,
-    scanner_id: 12,
-    finger: "left_index",
-    finger_display: "Left Index",
-    label: "Secondary",
-    is_active: true,
-    enrolled_at: "2024-02-14T08:10:00",
-    staff_id: 8,
-    staff_name: "Esther Nalwoga",
-    staff_employee_id: "EMP-0008",
-    staff_role: "employee",
-  },
-];
-
-const SCANNER_CAPACITY = 128;
+import { useFingerprintList, useDeleteFingerprint } from "@/hooks";
+import { toast } from "sonner";
+import type { Fingerprint } from "@/types";
 
 const avatarColors = [
   "bg-blue-100 text-blue-700",
@@ -235,30 +48,58 @@ const getInitials = (name: string) =>
     .slice(0, 2)
     .toUpperCase();
 
-// ── Page ──────────────────────────────────────────────────────────
+const fingerLabel = (finger: string) =>
+  finger.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+
+const SCANNER_CAPACITY = 128;
+
 export default function FingerprintsPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
-  const filtered = mockFingerprints.filter((f) => {
+  // Real API call
+  const { data, isLoading, isFetching } = useFingerprintList({
+    page,
+    page_size: pageSize,
+    search: search || undefined,
+  });
+
+  const deleteFingerprint = useDeleteFingerprint();
+
+  const fingerprints: Fingerprint[] = data?.results ?? [];
+  const total = data?.count ?? 0;
+
+  const usedSlots = fingerprints.filter((f) => f.is_active).length;
+  const usedPct = Math.round((usedSlots / SCANNER_CAPACITY) * 100);
+
+  const filtered = fingerprints.filter((f) => {
     const matchSearch =
       !search ||
       f.staff_name.toLowerCase().includes(search.toLowerCase()) ||
       f.staff_employee_id.toLowerCase().includes(search.toLowerCase()) ||
-      f.finger_display.toLowerCase().includes(search.toLowerCase());
+      f.finger_display?.toLowerCase().includes(search.toLowerCase());
+
     const matchStatus =
       statusFilter === "all" ||
       (statusFilter === "active" && f.is_active) ||
       (statusFilter === "inactive" && !f.is_active);
+
     return matchSearch && matchStatus;
   });
 
-  const paginated = filtered.slice((page - 1) * pageSize, page * pageSize);
-  const usedSlots = mockFingerprints.filter((f) => f.is_active).length;
-  const usedPct = Math.round((usedSlots / SCANNER_CAPACITY) * 100);
+  const handleDelete = async (id: number) => {
+    try {
+      await deleteFingerprint.mutateAsync(id);
+      toast.success("Fingerprint deleted successfully");
+      setDeletingId(null);
+    } catch (err) {
+      toast.error("Failed to delete fingerprint");
+    }
+  };
 
   const columns: Column<Fingerprint>[] = [
     {
@@ -293,9 +134,8 @@ export default function FingerprintsPage() {
           </div>
           <div>
             <Link
-              href={`/staff/${row.staff_id}/detail`}
+              href={`/staff/${row.staff_id}`}
               className="text-sm font-medium text-slate-800 hover:text-primary transition-colors"
-              onClick={(e) => e.stopPropagation()}
             >
               {row.staff_name}
             </Link>
@@ -455,21 +295,22 @@ export default function FingerprintsPage() {
 
       {/* Table */}
       <PaginatedTable
-        data={paginated}
+        data={filtered}
         columns={columns}
         page={page}
         pageSize={pageSize}
-        total={filtered.length}
+        total={total}
         onPageChange={setPage}
         onPageSizeChange={(s) => {
           setPageSize(s);
           setPage(1);
         }}
+        loading={isLoading || isFetching}
         emptyIcon="hugeicons:finger-print"
         emptyMessage="No fingerprints found"
       />
 
-      {/* Delete confirm modal */}
+      {/* Delete Confirmation Dialog */}
       {deletingId !== null && (
         <div className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-2xl border border-slate-200 p-6 max-w-sm w-full shadow-xl">
@@ -494,7 +335,7 @@ export default function FingerprintsPage() {
                 Cancel
               </button>
               <button
-                onClick={() => setDeletingId(null)}
+                onClick={() => handleDelete(deletingId)}
                 className="flex-1 px-4 py-2.5 text-sm bg-red-600 text-white rounded-xl hover:bg-red-700 transition-colors font-medium"
               >
                 Delete
