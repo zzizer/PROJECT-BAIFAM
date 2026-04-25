@@ -12,11 +12,22 @@ from .serializers import (
     UpdateAPIKeySerializer,
     APIKeyRequestLogSerializer,
 )
+from drf_spectacular.utils import extend_schema, OpenApiResponse
 
 
 class APIKeyListCreateView(APIView):
-    permission_classes = [IsAuthenticated]
+    required_scopes = {
+        "GET": ["api_keys:read"],
+        "POST": ["api_keys:write"],
+    }
 
+    @extend_schema(
+        responses={200: APIKeySerializer(many=True), 201: APIKeySerializer},
+        request=CreateAPIKeySerializer,
+        summary="List and create API keys",
+        description="GET returns a paginated list of API keys. POST creates a new API key with specified name, scopes, and optional expiration. The plaintext key is only returned on creation.",
+        tags=["API Keys"],
+    )
     def get(self, request):
         qs = (
             APIKey.objects.filter(deleted_at__isnull=True)
@@ -40,6 +51,16 @@ class APIKeyListCreateView(APIView):
         serializer = APIKeySerializer(page, many=True)
         return paginator.get_paginated_response(serializer.data)
 
+    @extend_schema(
+        summary="Create a new API key",
+        description="",
+        request=CreateAPIKeySerializer,
+        responses={
+            201: APIKeySerializer,
+            400: OpenApiResponse(description="Validation error"),
+        },
+        tags=["API Keys"],
+    )
     def post(self, request):
         serializer = CreateAPIKeySerializer(
             data=request.data, context={"request": request}
@@ -52,7 +73,11 @@ class APIKeyListCreateView(APIView):
 
 
 class APIKeyDetailView(APIView):
-    permission_classes = [IsAuthenticated]
+    required_scopes = {
+        "GET": ["api_keys:read"],
+        "PATCH": ["api_keys:write"],
+        "DELETE": ["api_keys:delete"],
+    }
 
     def _get_object(self, uuid):
         return get_object_or_404(
@@ -63,10 +88,24 @@ class APIKeyDetailView(APIView):
             deleted_at__isnull=True,
         )
 
+    @extend_schema(
+        summary="Retrieve API key details",
+        description="Returns details of an API key, including its scopes and request log count.",
+        responses={
+            200: APIKeySerializer,
+            404: OpenApiResponse(description="Not found"),
+        },
+        tags=["API Keys"],
+    )
     def get(self, request, uuid):
         instance = self._get_object(uuid)
         return Response(APIKeySerializer(instance).data)
 
+    @extend_schema(
+        summary="Update an API key",
+        request=UpdateAPIKeySerializer,
+        tags=["API Keys"],
+    )
     def patch(self, request, uuid):
         instance = self._get_object(uuid)
         serializer = UpdateAPIKeySerializer(instance, data=request.data, partial=True)
@@ -74,6 +113,10 @@ class APIKeyDetailView(APIView):
         serializer.save()
         return Response(APIKeySerializer(instance).data)
 
+    @extend_schema(
+        summary="Delete an API Key",
+        tags=["API Keys"],
+    )
     def delete(self, request, uuid):
         instance = self._get_object(uuid)
         instance.delete(deleted_by=request.user)
@@ -81,8 +124,15 @@ class APIKeyDetailView(APIView):
 
 
 class APIKeyToggleView(APIView):
-    permission_classes = [IsAuthenticated]
-
+    @extend_schema(
+        summary="Activate or Deactivate an API key",
+        description="Toggles the active status of an API key. If the key is currently active, it will be deactivated, and vice versa.",
+        responses={
+            200: APIKeySerializer,
+            404: OpenApiResponse(description="Not found"),
+        },
+        tags=["API Keys"],
+    )
     def post(self, request, uuid):
         instance = get_object_or_404(
             APIKey, internal_base_uuid=uuid, deleted_at__isnull=True
@@ -93,8 +143,18 @@ class APIKeyToggleView(APIView):
 
 
 class APIKeyRequestLogListView(APIView):
-    permission_classes = [IsAuthenticated]
+    required_scopes = {
+        "GET": ["api_keys:read"],
+    }
 
+    @extend_schema(
+        summary="List API key request logs",
+        description="Returns a paginated list of API key request logs. Can be filtered by API key UUID and HTTP method.",
+        responses={
+            200: APIKeyRequestLogSerializer(many=True),
+        },
+        tags=["API Keys"],
+    )
     def get(self, request):
         qs = APIKeyRequestLog.objects.select_related("api_key").order_by(
             "-requested_at"

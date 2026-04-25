@@ -70,8 +70,18 @@
     "description": "POST /api/export/"
   },
   {
-    "value": "admin:keys",
-    "label": "Admin Keys",
-    "description": "Full API key management"
+    "value": "api_keys:read",
+    "label": "Read API Keys",
+    "description": "GET /api/api-keys/ and GET /api/api-keys/<uuid>/"
+  },
+  {
+    "value": "api_keys:write",
+    "label": "Write API Keys",
+    "description": "POST /api/api-keys/ and PATCH /api/api-keys/<uuid>/ and POST /api/api-keys/<uuid>/toggle/"
+  },
+  {
+    "value": "api_keys:delete",
+    "label": "Delete API Keys",
+    "description": "DELETE /api/api-keys/<uuid>/"
   }
 ]

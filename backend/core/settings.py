@@ -216,3 +216,29 @@ if not FIRMWARE_VERSION:
 
 if not FINGERPRINT_TEMPLATE_SIZE:
     raise ValueError("FINGERPRINT_TEMPLATE_SIZE is missing in the .env file")
+
+
+SPECTACULAR_SETTINGS = {
+    "TITLE": "ACCESS-PI API",
+    "DESCRIPTION": "ACCESS-PI API Documentation",
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "SWAGGER_UI_SETTINGS": {
+        "deepLinking": True,
+        "persistAuthorization": True,
+        "displayOperationId": True,
+    },
+    "SECURITY": [
+        {"ApiKeyAuth": []},
+    ],
+    "APPEND_COMPONENTS": {
+        "securitySchemes": {
+            "ApiKeyAuth": {
+                "type": "apiKey",
+                "in": "header",
+                "name": "X-API-KEY",
+                "description": "API KEY",
+            },
+        }
+    },
+}
