@@ -4,6 +4,7 @@ import localFont from "next/font/local";
 import { cn } from "@/utils";
 import StoreProvider from "@/store/StoreProvider";
 import QueryProvider from "@/providers/QueryProvider";
+import { Toaster } from "sonner";
 
 const outfit = localFont({
   src: [
@@ -31,7 +32,16 @@ export default function RootLayout({
     <html lang="en" className={cn("font-sans", outfit.variable)}>
       <body className="antialiased">
         <StoreProvider>
-          <QueryProvider>{children}</QueryProvider>
+          <QueryProvider>
+            {children}
+            <Toaster
+              position="top-center"
+              duration={5000}
+              theme="light"
+              richColors
+              closeButton
+            />
+          </QueryProvider>
         </StoreProvider>
       </body>
     </html>

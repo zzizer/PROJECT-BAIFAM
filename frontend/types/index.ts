@@ -90,6 +90,17 @@ export type UpdateDepartmentPayload = Partial<CreateDepartmentPayload>;
 
 // ── Staff ──────────────────────────────────────────────────────────────────────
 
+export interface AccesPermission {
+  id: number;
+  internal_base_uuid: string;
+  is_allowed: boolean;
+  access_start_time?: string;
+  access_end_time?: string;
+  allowed_days?: string;
+  valid_from?: string;
+  valid_until?: string;
+}
+
 export interface Staff {
   id: number;
   internal_base_uuid: string;
@@ -102,6 +113,9 @@ export interface Staff {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+  fingerprints?: Fingerprint;
+  access_permission?: AccesPermission;
+  access_config?: AccesPermission;
 }
 
 export interface CreateStaffPayload {

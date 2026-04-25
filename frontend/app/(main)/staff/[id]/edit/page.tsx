@@ -1,38 +1,18 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Icon } from "@iconify/react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-
-const ROLES = ["employee", "manager", "security", "admin", "visitor"];
-const DEPARTMENTS = ["IT", "Operations", "Finance", "HR", "Security"];
-const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-
+import {
+  useStaffDetail,
+  useUpdateStaff,
+  useRoleList,
+  useDepartmentList,
+} from "@/hooks";
+import { toast } from "sonner";
 const inputCls =
   "w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-slate-400 bg-white text-slate-800";
-
-// Mock — replace with fetch(`/api/users/staff/${id}/`)
-const mockStaff = {
-  id: 1,
-  employee_id: "EMP-0001",
-  full_name: "Samuel Okello",
-  email: "samuel@co.ug",
-  phone: "+256 700 100001",
-  role: "admin",
-  department: "IT",
-  is_active: true,
-  notes: "Primary IT administrator.",
-};
-
-const mockPermission = {
-  is_allowed: true,
-  access_start_time: "08:00",
-  access_end_time: "18:00",
-  allowed_days: "0,1,2,3,4",
-  valid_from: "",
-  valid_until: "",
-};
 
 const Field = ({
   label,
@@ -90,14 +70,71 @@ const SectionCard = ({
   </div>
 );
 
+const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+
 export default function StaffEditPage() {
   const params = useParams();
   const router = useRouter();
-  const id = params?.id;
+  const staffId = params?.id as string;
+
+  const updateStaff = useUpdateStaff();
+
+  // Fetch current staff data
+  const { data: staff, isLoading } = useStaffDetail(staffId);
+
+  // Fetch roles and departments for dropdowns
+  const { data: rolesData } = useRoleList({ page_size: 100 });
+  const { data: departmentsData } = useDepartmentList({ page_size: 100 });
+
+  const roles = rolesData?.results ?? [];
+  const departments = departmentsData?.results ?? [];
+
+  // Form state
+  const [form, setForm] = useState({
+    full_name: "",
+    email: "",
+    phone_number: "",
+    role_uuid: "",
+    department_uuid: "",
+    is_active: true,
+    notes: "",
+  });
+
+  const [perm, setPerm] = useState({
+    is_allowed: true,
+    access_start_time: "08:00",
+    access_end_time: "18:00",
+    allowed_days: "0,1,2,3,4",
+    valid_from: "",
+    valid_until: "",
+  });
 
   const [saving, setSaving] = useState(false);
-  const [form, setForm] = useState({ ...mockStaff });
-  const [perm, setPerm] = useState({ ...mockPermission });
+
+  // Populate form when staff data loads
+  useEffect(() => {
+    if (staff) {
+      setForm({
+        full_name: staff.full_name,
+        email: staff.email || "",
+        phone_number: staff.phone_number || "",
+        role_uuid: staff.role?.internal_base_uuid || "",
+        department_uuid: staff.department?.internal_base_uuid || "",
+        is_active: staff.is_active,
+        notes: staff.notes || "",
+      });
+
+      const access = staff.access_config || {};
+      setPerm({
+        is_allowed: access.is_allowed ?? true,
+        access_start_time: access.access_start_time || "08:00",
+        access_end_time: access.access_end_time || "18:00",
+        allowed_days: access.allowed_days || "0,1,2,3,4",
+        valid_from: access.valid_from || "",
+        valid_until: access.valid_until || "",
+      });
+    }
+  }, [staff]);
 
   const allowedDays = perm.allowed_days
     ? perm.allowed_days.split(",").map(Number)
@@ -106,35 +143,75 @@ export default function StaffEditPage() {
   const toggleDay = (i: number) => {
     const next = allowedDays.includes(i)
       ? allowedDays.filter((d) => d !== i)
-      : [...allowedDays, i].sort();
+      : [...allowedDays, i].sort((a, b) => a - b);
     setPerm((p) => ({ ...p, allowed_days: next.join(",") }));
   };
 
   const handleSave = async () => {
+    if (!form.full_name.trim()) return;
+
     setSaving(true);
-    await new Promise((r) => setTimeout(r, 900));
-    setSaving(false);
-    router.push(`/staff/${id}/detail`);
+
+    const payload = {
+      full_name: form.full_name.trim(),
+      email: form.email.trim() || undefined,
+      phone_number: form.phone_number.trim() || undefined,
+      role_uuid: form.role_uuid || undefined,
+      department_uuid: form.department_uuid || undefined,
+      is_active: form.is_active,
+      notes: form.notes.trim() || undefined,
+      access_permission: {
+        is_allowed: perm.is_allowed,
+        access_start_time: perm.access_start_time || null,
+        access_end_time: perm.access_end_time || null,
+        allowed_days: perm.allowed_days,
+        valid_from: perm.valid_from || null,
+        valid_until: perm.valid_until || null,
+      },
+    };
+
+    try {
+      await updateStaff.mutateAsync({
+        uuid: staffId,
+        data: payload,
+      });
+
+      toast.success("Staff updated successfully!");
+      router.push(`/staff/${staffId}/detail`);
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to update staff. Please try again.");
+    } finally {
+      setSaving(false);
+    }
   };
+
+  if (isLoading || !staff) {
+    return (
+      <div className="p-6 max-w-5xl mx-auto flex items-center justify-center min-h-[60vh]">
+        <p className="text-slate-500">Loading staff data...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6 max-w-5xl mx-auto">
-      {/* Breadcrumb + actions */}
+      {/* Breadcrumb + Actions */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-2 text-sm text-slate-500">
           <Link
             href="/staff"
-            className="hover:text-slate-800 transition-colors flex items-center gap-1"
+            className="hover:text-slate-800 flex items-center gap-1"
           >
             <Icon icon="hugeicons:arrow-left-01" className="text-base" />
             Staff
           </Link>
           <Icon icon="hugeicons:arrow-right-01" className="text-xs" />
           <Link
-            href={`/staff/${id}/detail`}
-            className="hover:text-slate-800 transition-colors"
+            href={`/staff/${staffId}/detail`}
+            className="hover:text-slate-800"
           >
-            {form.full_name}
+            {staff.full_name}
           </Link>
           <Icon icon="hugeicons:arrow-right-01" className="text-xs" />
           <span className="text-slate-800 font-medium">Edit</span>
@@ -142,7 +219,7 @@ export default function StaffEditPage() {
 
         <div className="flex items-center gap-2">
           <Link
-            href={`/staff/${id}/detail`}
+            href={`/staff/${staffId}`}
             className="px-4 py-2 text-sm text-slate-600 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors"
           >
             Cancel
@@ -165,7 +242,7 @@ export default function StaffEditPage() {
         </div>
       </div>
 
-      {/* Personal info */}
+      {/* Personal Information */}
       <SectionCard title="Personal Information" icon="hugeicons:user-03">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="sm:col-span-2">
@@ -180,6 +257,7 @@ export default function StaffEditPage() {
               />
             </Field>
           </div>
+
           <Field label="Email Address">
             <input
               className={inputCls}
@@ -190,43 +268,57 @@ export default function StaffEditPage() {
               }
             />
           </Field>
+
           <Field label="Phone Number">
             <input
               className={inputCls}
-              value={form.phone}
+              value={form.phone_number}
               onChange={(e) =>
-                setForm((p) => ({ ...p, phone: e.target.value }))
+                setForm((p) => ({ ...p, phone_number: e.target.value }))
               }
             />
           </Field>
+
           <Field label="Role">
             <select
               className={inputCls}
-              value={form.role}
-              onChange={(e) => setForm((p) => ({ ...p, role: e.target.value }))}
+              value={form.role_uuid}
+              onChange={(e) =>
+                setForm((p) => ({ ...p, role_uuid: e.target.value }))
+              }
             >
-              {ROLES.map((r) => (
-                <option key={r} value={r}>
-                  {r.charAt(0).toUpperCase() + r.slice(1)}
+              <option value="">Select Role</option>
+              {roles.map((role) => (
+                <option
+                  key={role.internal_base_uuid}
+                  value={role.internal_base_uuid}
+                >
+                  {role.name}
                 </option>
               ))}
             </select>
           </Field>
+
           <Field label="Department">
             <select
               className={inputCls}
-              value={form.department}
+              value={form.department_uuid}
               onChange={(e) =>
-                setForm((p) => ({ ...p, department: e.target.value }))
+                setForm((p) => ({ ...p, department_uuid: e.target.value }))
               }
             >
-              {DEPARTMENTS.map((d) => (
-                <option key={d} value={d}>
-                  {d}
+              <option value="">Select Department</option>
+              {departments.map((dept) => (
+                <option
+                  key={dept.internal_base_uuid}
+                  value={dept.internal_base_uuid}
+                >
+                  {dept.name}
                 </option>
               ))}
             </select>
           </Field>
+
           <div className="sm:col-span-2">
             <Field label="Notes">
               <textarea
@@ -236,15 +328,18 @@ export default function StaffEditPage() {
                 onChange={(e) =>
                   setForm((p) => ({ ...p, notes: e.target.value }))
                 }
-                placeholder="Optional notes…"
+                placeholder="Optional notes about this staff member…"
               />
             </Field>
           </div>
+
           <div className="sm:col-span-2 flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
             <div>
-              <p className="text-sm font-medium text-slate-700">Active</p>
+              <p className="text-sm font-medium text-slate-700">
+                Active Status
+              </p>
               <p className="text-xs text-slate-400 mt-0.5">
-                Inactive staff cannot access the door regardless of permissions
+                Inactive staff cannot access the door
               </p>
             </div>
             <Toggle
@@ -255,7 +350,7 @@ export default function StaffEditPage() {
         </div>
       </SectionCard>
 
-      {/* Access permission */}
+      {/* Access Permission */}
       <SectionCard title="Access Permission" icon="hugeicons:shield-key">
         <div className="space-y-5">
           <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
@@ -264,7 +359,7 @@ export default function StaffEditPage() {
                 Access Allowed
               </p>
               <p className="text-xs text-slate-400 mt-0.5">
-                Master switch — overrides all schedule rules
+                Master switch — overrides all rules
               </p>
             </div>
             <Toggle
@@ -274,7 +369,7 @@ export default function StaffEditPage() {
           </div>
 
           <div
-            className={`space-y-5 ${!perm.is_allowed ? "opacity-40 pointer-events-none" : ""}`}
+            className={!perm.is_allowed ? "opacity-40 pointer-events-none" : ""}
           >
             <Field label="Allowed Days">
               <div className="flex gap-1.5 flex-wrap mt-1">
@@ -295,7 +390,7 @@ export default function StaffEditPage() {
               </div>
             </Field>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-3 mt-6">
               <Field label="Access From">
                 <input
                   type="time"
@@ -321,7 +416,7 @@ export default function StaffEditPage() {
               </Field>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-3 mt-4">
               <Field label="Valid From">
                 <input
                   type="date"

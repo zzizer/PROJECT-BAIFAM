@@ -67,12 +67,9 @@ class StaffSerializer(BaseSerializer):
 
     access_config = serializers.SerializerMethodField(read_only=True)
 
-    def get_access_config(self):
-        if (
-            hasattr(self.instance, "access_permission")
-            and self.instance.access_permission
-        ):
-            return AccessPermissionSerializer(self.instance.access_permission).data
+    def get_access_config(self, obj):
+        if hasattr(obj, "access_permission") and obj.access_permission:
+            return AccessPermissionSerializer(obj.access_permission).data
         return None
 
     class Meta:
