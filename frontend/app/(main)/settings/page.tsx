@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { useDeviceSettings, useUpdateDeviceSettings } from "@/hooks";
 import type { UpdateDeviceSettingsPayload } from "@/types";
+import { TimezoneSelect } from "@/components/commons/timezone-select";
 
 // ── Types ──────────────────────────────────────────────────────────
 interface SettingsForm {
@@ -329,22 +330,15 @@ export default function SettingsPage() {
             placeholder="e.g. Ground Floor, Block A"
           />
         </FieldRow>
-        {/* <FieldRow
+        <FieldRow
           label="Timezone"
           hint="Affects schedule evaluation and log timestamps"
         >
-          <select
+          <TimezoneSelect
             value={settings.timezone}
-            onChange={(e) => update("timezone", e.target.value)}
-            className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-slate-400 bg-white text-slate-800"
-          >
-            {TIMEZONES.map((tz) => (
-              <option key={tz} value={tz}>
-                {tz}
-              </option>
-            ))}
-          </select>
-        </FieldRow> */}
+            onChange={(tz) => update("timezone", tz)}
+          />
+        </FieldRow>
       </Card>
 
       {/* Door & Hardware */}
