@@ -69,7 +69,7 @@ export const DEPARTMENTS_API = createResourceAPI<
 export const FINGERPRINTS_API = createResourceAPI<
   Fingerprint,
   EnrollFingerprintPayload
->("/fingerprints"); 
+>("/fingerprints");
 
 // ── Access Logs ────────────────────────────────────────────────────────────────
 export const LOGS_API = createResourceAPI<AccessLog>(
@@ -91,10 +91,13 @@ export const SCHEDULES_API = createResourceAPI<
 // ── Device Settings ────────────────────────────────────────────────────────────
 
 export const DEVICE_SETTINGS_API = {
-  get: () => apiClient.get<DeviceSettings>("/settings/").then((r) => r.data),
+  get: () =>
+    apiClient.get<DeviceSettings>("/device/settings/").then((r) => r.data),
 
   update: (data: UpdateDeviceSettingsPayload) =>
-    apiClient.patch<DeviceSettings>("/settings/", data).then((r) => r.data),
+    apiClient
+      .patch<DeviceSettings>("/device/settings/", data)
+      .then((r) => r.data),
 };
 
 // ── Scopes ─────────────────────────────────────────────────────────────────────

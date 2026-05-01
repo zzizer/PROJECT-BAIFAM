@@ -320,7 +320,9 @@ const EditModal = ({
   const [expires, setExpires] = useState(
     apiKey.expires_at ? apiKey.expires_at.split("T")[0] : "",
   );
-  const updateMutation = useUpdateAPIKey(apiKey.internal_base_uuid);
+
+  // FIX 1: useUpdateAPIKey takes no arguments
+  const updateMutation = useUpdateAPIKey();
 
   const handleSave = () => {
     const validUuids = scopeUuids.filter(Boolean);
@@ -330,7 +332,11 @@ const EditModal = ({
       scope_uuids: validUuids,
       expires_at: expires ? new Date(expires).toISOString() : null,
     };
-    updateMutation.mutate(payload, { onSuccess: onClose });
+    // FIX 2: mutate receives { uuid, data } — not payload alone
+    updateMutation.mutate(
+      { uuid: apiKey.internal_base_uuid, data: payload },
+      { onSuccess: onClose },
+    );
   };
 
   return (

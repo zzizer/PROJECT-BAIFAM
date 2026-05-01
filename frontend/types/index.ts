@@ -144,6 +144,7 @@ export interface Fingerprint {
   enrolled_at: string;
   created_at: string;
   updated_at: string;
+  is_active: boolean;
 }
 
 export interface EnrollFingerprintPayload {
@@ -214,17 +215,37 @@ export interface CreateAccessRulePayload {
 export interface DeviceSettings {
   id: number;
   device_name: string;
-  location: string | null;
+  device_location: string | null;
   timezone: string;
-  allow_unknown_attempts: boolean;
+  unlock_duration_sec: number;
+  require_2finger_confirm: boolean;
+  allow_unknown_finger_log: boolean;
+  buzzer_enabled: boolean;
+  buzzer_volume: number;
+  lockout_duration_mins: number;
   max_failed_attempts: number;
-  lockout_duration_minutes: number;
-  updated_at: string;
+  max_duration_before_sleep_if_idle: number;
+  max_fingerprints_per_staff: number;
+  serial_number: string;
+  device_model: string;
+  hardware_version: string;
+  firmware_version: string;
+  fingerprint_template_size: number;
 }
 
-export type UpdateDeviceSettingsPayload = Partial<
-  Omit<DeviceSettings, "id" | "updated_at">
->;
+export interface UpdateDeviceSettingsPayload {
+  device_name?: string;
+  device_location?: string | null;
+  timezone?: string;
+  unlock_duration_sec?: number;
+  require_2finger_confirm?: boolean;
+  allow_unknown_finger_log?: boolean;
+  buzzer_enabled?: boolean;
+  buzzer_volume?: number;
+  lockout_duration_mins?: number;
+  max_failed_attempts?: number;
+  max_duration_before_sleep_if_idle?: number;
+}
 
 // ── API Key Management ─────────────────────────────────────────────────────────
 

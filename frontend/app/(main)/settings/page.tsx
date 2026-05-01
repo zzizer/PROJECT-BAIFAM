@@ -5,7 +5,7 @@ import { Icon } from "@iconify/react";
 import { toast } from "sonner";
 
 import { useDeviceSettings, useUpdateDeviceSettings } from "@/hooks";
-import type { DeviceSettings, UpdateDeviceSettingsPayload } from "@/types";
+import type { UpdateDeviceSettingsPayload } from "@/types";
 
 // ── Types ──────────────────────────────────────────────────────────
 interface SettingsForm {
@@ -329,7 +329,7 @@ export default function SettingsPage() {
             placeholder="e.g. Ground Floor, Block A"
           />
         </FieldRow>
-        <FieldRow
+        {/* <FieldRow
           label="Timezone"
           hint="Affects schedule evaluation and log timestamps"
         >
@@ -344,10 +344,10 @@ export default function SettingsPage() {
               </option>
             ))}
           </select>
-        </FieldRow>
+        </FieldRow> */}
       </Card>
 
-      {/* Door & Hardware - unchanged UI */}
+      {/* Door & Hardware */}
       <Card>
         <SectionHeader
           icon="hugeicons:lock-password"
@@ -455,17 +455,29 @@ export default function SettingsPage() {
         </FieldRow>
       </Card>
 
-      {/* Device Info (Read Only) */}
+      {/* Device Info (Read Only) — sourced from settingsData, not a static object */}
       <Card>
         <SectionHeader
           icon="hugeicons:information-circle"
           title="Device Information"
           description="Hardware identifiers — read only, set at manufacture"
         />
-        <InfoRow label="Serial Number" value={deviceInfo.serial_number} />
-        <InfoRow label="Device Model" value={deviceInfo.device_model} />
-        <InfoRow label="Hardware Version" value={deviceInfo.hardware_version} />
-        <InfoRow label="Firmware Version" value={deviceInfo.firmware_version} />
+        <InfoRow
+          label="Serial Number"
+          value={settingsData?.serial_number ?? "—"}
+        />
+        <InfoRow
+          label="Device Model"
+          value={settingsData?.device_model ?? "—"}
+        />
+        <InfoRow
+          label="Hardware Version"
+          value={settingsData?.hardware_version ?? "—"}
+        />
+        <InfoRow
+          label="Firmware Version"
+          value={settingsData?.firmware_version ?? "—"}
+        />
       </Card>
 
       {/* Danger Zone */}
