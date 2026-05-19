@@ -9,7 +9,6 @@ from .config import (
     SCANNER_BAUD,
     SCANNER_ADDRESS,
     SCANNER_PASSWORD,
-    LIFT_WAIT_SEC,
     FINGER_WAIT_TIMEOUT_SEC,
 )
 
@@ -55,17 +54,20 @@ class FingerprintScanner:
             time.sleep(0.1)
         return False
 
-    def wait_for_lift(self, timeout: float = FINGER_WAIT_TIMEOUT_SEC) -> None:
+    def wait_for_lift(self, timeout: float = FINGER_WAIT_TIMEOUT_SEC) -> bool:
         self._require_connection()
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
             if not self._f.readImage():
-                time.sleep(LIFT_WAIT_SEC)
-                return
+                return True
             time.sleep(0.1)
+        return False
 
-    def enroll(self) -> int:
+    def enroll(self) -> None:
         self._require_connection()
+
+        if not self._f.readImage():
+            raise ScannerError("No finger detected for first scan.")
 
         self._f.convertImage(FINGERPRINT_CHARBUFFER1)
 
@@ -83,6 +85,9 @@ class FingerprintScanner:
     def capture_second_scan(self) -> int:
         self._require_connection()
 
+        if not self._f.readImage():
+            raise ScannerError("No finger placed for second scan.")
+
         self._f.convertImage(FINGERPRINT_CHARBUFFER2)
 
         if self._f.compareCharacteristics() == 0:
@@ -90,7 +95,6 @@ class FingerprintScanner:
 
         self._f.createTemplate()
         slot = self._f.storeTemplate()
-
         return slot
 
     def identify(self) -> tuple[int, int] | None:
