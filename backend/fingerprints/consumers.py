@@ -1,9 +1,11 @@
 import json
 import threading
-from channels.generic.websocket import AsyncWebsocketConsumer
-from asgiref.sync import async_to_sync
 from uuid import uuid4
-from daemon.scanner import FingerprintScanner
+
+from asgiref.sync import async_to_sync
+from channels.generic.websocket import AsyncWebsocketConsumer
+
+from daemon.manager import fingerprint_manager
 
 
 class FingerprintConsumer(AsyncWebsocketConsumer):
@@ -11,6 +13,7 @@ class FingerprintConsumer(AsyncWebsocketConsumer):
         self.room_group_name = f"scanner_{uuid4().hex}"
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
         await self.accept()
+
         await self.send(
             text_data=json.dumps(
                 {
@@ -28,38 +31,30 @@ class FingerprintConsumer(AsyncWebsocketConsumer):
         command = data.get("command")
 
         if command == "start_enroll":
+            staff_base_uuid = data.get("staff_base_uuid")
+
+            if not staff_base_uuid:
+                await self.send(
+                    text_data=json.dumps(
+                        {
+                            "type": "error",
+                            "message": "Missing staff_base_uuid.",
+                        }
+                    )
+                )
+                return
+
             threading.Thread(
                 target=self._enroll_process,
-                args=(data.get("staff_base_uuid"),),
+                args=(staff_base_uuid,),
                 daemon=True,
             ).start()
 
     def _enroll_process(self, staff_base_uuid: str):
-        scanner = FingerprintScanner()
         try:
-            scanner.connect()
-
-            self._send_message("instruction", "Place your finger for first scan...")
-
-            if not scanner.wait_for_finger():
-                self._send_message("error", "No finger detected. Enrollment cancelled.")
-                return
-
-            scanner.enroll()
-
-            self._send_message("instruction", "Lift your finger...")
-
-            if not scanner.wait_for_lift():
-                self._send_message("error", "Timeout waiting for lift.")
-                return
-
-            self._send_message("instruction", "Place the same finger again...")
-
-            if not scanner.wait_for_finger(timeout=30):
-                self._send_message("error", "No finger detected for second scan.")
-                return
-
-            slot = scanner.capture_second_scan()
+            slot = fingerprint_manager.enroll(
+                on_message=lambda kind, message: self._send_message(kind, message),
+            )
 
             self._send_message(
                 "success",
@@ -71,9 +66,6 @@ class FingerprintConsumer(AsyncWebsocketConsumer):
         except Exception as e:
             self._send_message("error", f"Enrollment failed: {str(e)}")
 
-        finally:
-            scanner.disconnect()
-
     def _send_message(self, msg_type: str, message: str, **extra):
         payload = {
             "type": "scanner_message",
@@ -81,6 +73,7 @@ class FingerprintConsumer(AsyncWebsocketConsumer):
             "message": message,
         }
         payload.update(extra)
+
         async_to_sync(self.channel_layer.group_send)(
             self.room_group_name,
             payload,
@@ -91,8 +84,10 @@ class FingerprintConsumer(AsyncWebsocketConsumer):
             "type": event["message_type"],
             "message": event["message"],
         }
+
         if "slot" in event:
             payload["slot"] = event["slot"]
+
         if "staff_base_uuid" in event:
             payload["staff_base_uuid"] = event["staff_base_uuid"]
 

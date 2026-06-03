@@ -50,14 +50,18 @@ class Fingerprint(SoftDeletionModel):
     class Meta:
         verbose_name = "Fingerprint"
         verbose_name_plural = "Fingerprints"
-        unique_together = [("slot",)]
         ordering = ["slot", "staff__full_name", "finger_index"]
         constraints = [
             models.UniqueConstraint(
                 fields=["staff", "finger_index"],
                 condition=models.Q(deleted_at__isnull=True),
                 name="unique_active_finger_per_staff",
-            )
+            ),
+            models.UniqueConstraint(
+                fields=["slot"],
+                condition=models.Q(deleted_at__isnull=True),
+                name="unique_active_fingerprint_slot",
+            ),
         ]
 
     def __str__(self):
@@ -87,6 +91,9 @@ class AccessLog(SoftDeletionModel):
     DENY_INACTIVE_STAFF = "inactive_staff"
     DENY_LOCKED_OUT = "locked_out"
     DENY_EXPIRED = "permission_expired"
+    DENY_NO_PERMISSION = "no_active_permission"
+    DENY_NOT_YET_VALID = "permission_not_yet_valid"
+    DENY_SCANNER_ERROR = "scanner_error"
 
     DENY_REASON_CHOICES = [
         (DENY_NO_MATCH, "No Fingerprint Match"),
@@ -96,6 +103,9 @@ class AccessLog(SoftDeletionModel):
         (DENY_INACTIVE_STAFF, "Inactive Staff"),
         (DENY_LOCKED_OUT, "Locked Out"),
         (DENY_EXPIRED, "Permission Expired"),
+        (DENY_NO_PERMISSION, "No Active Permission"),
+        (DENY_NOT_YET_VALID, "Permission Not Yet Valid"),
+        (DENY_SCANNER_ERROR, "Scanner Error"),
     ]
 
     staff = models.ForeignKey(

@@ -1,6 +1,7 @@
 import time
 import threading
-from config import RELAY_PIN, RELAY_ACTIVE_SEC
+
+from .config import RELAY_PIN, RELAY_ACTIVE_SEC
 
 try:
     import RPi.GPIO as GPIO
