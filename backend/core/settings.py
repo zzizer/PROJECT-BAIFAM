@@ -203,6 +203,13 @@ CELERY_WORKER_PREFETCH_MULTIPLIER = 1  # Ensures fair task distribution between 
 
 CELERY_BEAT_SCHEDULER = "django_celery_beat.schedulers:DatabaseScheduler"
 
+ENABLE_WEB_TERMINAL = (
+    os.environ.get("ENABLE_WEB_TERMINAL", "False").lower() == "true"
+)
+WEB_TERMINAL_IDLE_TIMEOUT = int(
+    os.environ.get("WEB_TERMINAL_IDLE_TIMEOUT", "900")
+)
+
 
 DEVICE_SERIAL_NUMBER = os.getenv("DEVICE_SERIAL_NUMBER")
 DEVICE_MODEL = os.getenv("DEVICE_MODEL")
