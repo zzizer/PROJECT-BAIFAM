@@ -129,9 +129,9 @@ export const DEVICE_SETTINGS_API = {
 // ── Scopes ─────────────────────────────────────────────────────────────────────
 
 export const SCOPES_API = {
-  getAll: () =>
+  getAll: (page = 1) =>
     apiClient
-      .get<PaginatedResponse<Scope>>("/system/scopes/?page_size=100")
+      .get<PaginatedResponse<Scope>>(`/system/scopes/${buildQuery({ page })}`)
       .then((r) => r.data),
 };
 

@@ -61,25 +61,22 @@ const fmtRel = (iso: string | null) => {
 
 // ── Scope Selector ─────────────────────────────────────────────────
 
-const SCOPES_PAGE_SIZE = 10;
-
 const ScopeSelector = ({
-  all,
   selected,
   onChange,
 }: {
-  all: Scope[];
   selected: string[];
   onChange: (uuids: string[]) => void;
 }) => {
-  const [visibleCount, setVisibleCount] = useState(SCOPES_PAGE_SIZE);
   const containerRef = useRef<HTMLDivElement>(null);
-
-  const scopes = Array.isArray(all) ? all : [];
-  const visible = scopes.slice(0, visibleCount);
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage } = useScopes();
+  const scopes = data?.pages.flatMap((page) => page.results) ?? [];
+  const total = data?.pages[0]?.count ?? 0;
   const allIds = scopes.map((s) => s.internal_base_uuid);
   const allSelected =
-    allIds.length > 0 && allIds.every((id) => selected.includes(id));
+    !hasNextPage &&
+    allIds.length > 0 &&
+    allIds.every((id) => selected.includes(id));
   const someSelected =
     !allSelected && allIds.some((id) => selected.includes(id));
 
@@ -90,15 +87,22 @@ const ScopeSelector = ({
         : [...selected, id],
     );
 
-  const toggleAll = () => onChange(allSelected ? [] : allIds);
+  const toggleAll = () => {
+    if (hasNextPage) return;
+    onChange(allSelected ? [] : allIds);
+  };
 
   const handleScroll = useCallback(() => {
     const el = containerRef.current;
     if (!el) return;
-    if (el.scrollTop + el.clientHeight >= el.scrollHeight - 8) {
-      setVisibleCount((c) => Math.min(c + SCOPES_PAGE_SIZE, scopes.length));
+    if (
+      el.scrollTop + el.clientHeight >= el.scrollHeight - 24 &&
+      hasNextPage &&
+      !isFetchingNextPage
+    ) {
+      void fetchNextPage();
     }
-  }, [scopes.length]);
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
   const selectAllRef = useCallback(
     (el: HTMLInputElement | null) => {
@@ -117,14 +121,19 @@ const ScopeSelector = ({
             ref={selectAllRef}
             checked={allSelected}
             onChange={toggleAll}
+            disabled={hasNextPage}
             className="accent-primary"
           />
           <span className="text-xs font-semibold text-slate-600">
-            {allSelected ? "Deselect all" : "Select all"}
+            {hasNextPage
+              ? "Scroll to load all scopes"
+              : allSelected
+                ? "Deselect all"
+                : "Select all"}
           </span>
         </label>
         <span className="text-[10px] text-slate-400 tabular-nums">
-          {selected.length} / {scopes.length} selected
+          {selected.length} / {total} selected
         </span>
       </div>
 
@@ -134,7 +143,7 @@ const ScopeSelector = ({
         onScroll={handleScroll}
         className="grid grid-cols-2 gap-1.5 max-h-56 overflow-y-auto pr-0.5"
       >
-        {visible.map((s) => {
+        {scopes.map((s) => {
           const id = s.internal_base_uuid;
           const checked = selected.includes(id);
           return (
@@ -164,13 +173,13 @@ const ScopeSelector = ({
           );
         })}
 
-        {visibleCount < scopes.length && (
+        {isFetchingNextPage && (
           <div className="col-span-2 flex items-center justify-center py-2 gap-1.5 text-xs text-slate-400">
             <Icon
               icon="hugeicons:loading-03"
               className="animate-spin text-sm"
             />
-            Scroll for more…
+            Loading more scopes…
           </div>
         )}
       </div>
@@ -181,11 +190,9 @@ const ScopeSelector = ({
 // ── Create Modal ───────────────────────────────────────────────────
 
 const CreateModal = ({
-  allScopes,
   onClose,
   onCreated,
 }: {
-  allScopes: Scope[];
   onClose: () => void;
   onCreated: (key: APIKey) => void;
 }) => {
@@ -246,7 +253,6 @@ const CreateModal = ({
               Scopes <span className="text-red-400">*</span>
             </label>
             <ScopeSelector
-              all={allScopes}
               selected={scopeUuids}
               onChange={setScopeUuids}
             />
@@ -304,11 +310,9 @@ const CreateModal = ({
 
 const EditModal = ({
   apiKey,
-  allScopes,
   onClose,
 }: {
   apiKey: APIKey;
-  allScopes: Scope[];
   onClose: () => void;
 }) => {
   const [name, setName] = useState(apiKey.name);
@@ -374,7 +378,6 @@ const EditModal = ({
               Scopes
             </label>
             <ScopeSelector
-              all={allScopes}
               selected={scopeUuids}
               onChange={setScopeUuids}
             />
@@ -642,7 +645,8 @@ export default function APIKeyManager() {
   const [pageSize, setPageSize] = useState(8);
 
   const { data: scopesData, isLoading: scopesLoading } = useScopes();
-  const allScopes: Scope[] = scopesData?.results ?? [];
+  const allScopes: Scope[] =
+    scopesData?.pages.flatMap((scopePage) => scopePage.results) ?? [];
 
   const { data, isLoading } = useAPIKeyList({
     page,
@@ -917,7 +921,6 @@ export default function APIKeyManager() {
       {/* Modals */}
       {showCreate && (
         <CreateModal
-          allScopes={allScopes}
           onClose={() => setShowCreate(false)}
           onCreated={handleCreated}
         />
@@ -925,7 +928,6 @@ export default function APIKeyManager() {
       {editKey && (
         <EditModal
           apiKey={editKey}
-          allScopes={allScopes}
           onClose={() => setEditKey(null)}
         />
       )}

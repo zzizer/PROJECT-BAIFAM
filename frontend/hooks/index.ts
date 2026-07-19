@@ -2,6 +2,7 @@
 
 import {
   useQuery,
+  useInfiniteQuery,
   useMutation,
   useQueryClient,
   type UseQueryOptions,
@@ -320,9 +321,21 @@ export function useRestartDevice() {
 // ── Scopes ─────────────────────────────────────────────────────────────────────
 
 export function useScopes() {
-  return useQuery<PaginatedResponse<Scope>>({
+  return useInfiniteQuery<
+    PaginatedResponse<Scope>,
+    Error,
+    {
+      pages: PaginatedResponse<Scope>[];
+      pageParams: number[];
+    },
+    ReturnType<typeof QK.scopes.all>,
+    number
+  >({
     queryKey: QK.scopes.all(),
-    queryFn: () => SCOPES_API.getAll(),
+    queryFn: ({ pageParam }) => SCOPES_API.getAll(pageParam),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage, pages) =>
+      lastPage.next ? pages.length + 1 : undefined,
     staleTime: 1000 * 60 * 10,
   });
 }
