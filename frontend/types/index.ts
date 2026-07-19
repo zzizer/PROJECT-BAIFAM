@@ -186,6 +186,51 @@ export interface AccessLog {
   result: AccessResult;
 }
 
+export interface DashboardSystemMetrics {
+  cpu_percent: number;
+  memory_percent: number;
+  disk_percent: number;
+  cpu_temperature: number | null;
+  uptime_seconds: number;
+}
+
+export interface DashboardSnapshot {
+  generated_at: string;
+  device: {
+    name: string;
+    scanner_connected: boolean;
+    door_locked: boolean;
+    uptime_seconds: number;
+  };
+  scanner: FingerprintMetadata["storage"] | null;
+  today: {
+    granted: number;
+    denied: number;
+    total: number;
+    staff_seen: number;
+  };
+  system: DashboardSystemMetrics | null;
+  recent_access: AccessLog[];
+}
+
+export type DashboardConnectionState =
+  | "connecting"
+  | "live"
+  | "reconnecting"
+  | "offline";
+
+export interface DashboardSocketEvent {
+  type:
+    | "connection.ready"
+    | "access.recorded"
+    | "scanner.status"
+    | "scanner.storage"
+    | "system.metrics"
+    | "door.status";
+  timestamp: string;
+  data?: Record<string, unknown>;
+}
+
 // ── Access Schedules & Rules ───────────────────────────────────────────────────
 
 export type ScheduleDay =

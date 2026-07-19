@@ -2,6 +2,10 @@
 
 import React, { useEffect, useState } from "react";
 import { Icon } from "@iconify/react";
+import Link from "next/link";
+
+import { useDashboardSnapshot } from "@/hooks";
+import { useDashboardLive } from "@/hooks/use-dashboard-live";
 
 // ── Types ──────────────────────────────────────────────────────────
 interface StatCardProps {
@@ -11,15 +15,6 @@ interface StatCardProps {
   trend?: string;
   trendUp?: boolean;
   accent: "green" | "red" | "blue" | "amber";
-}
-
-interface LogEntry {
-  id: number;
-  name: string;
-  time: string;
-  granted: boolean;
-  reason?: string;
-  initials: string;
 }
 
 // ── Helpers ────────────────────────────────────────────────────────
@@ -99,75 +94,18 @@ const StatCard: React.FC<StatCardProps> = ({
 };
 
 // ── Live dot ───────────────────────────────────────────────────────
-const LiveDot = () => (
+const LiveDot = ({ live }: { live: boolean }) => (
   <span className="relative flex h-2.5 w-2.5">
-    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
+    {live && (
+      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+    )}
+    <span
+      className={`relative inline-flex rounded-full h-2.5 w-2.5 ${
+        live ? "bg-emerald-500" : "bg-slate-300"
+      }`}
+    />
   </span>
 );
-
-// ── Mock log data ──────────────────────────────────────────────────
-const mockLogs: LogEntry[] = [
-  {
-    id: 1,
-    name: "Samuel Okello",
-    time: "09:42 AM",
-    granted: true,
-    initials: "SO",
-  },
-  {
-    id: 2,
-    name: "Unknown",
-    time: "09:38 AM",
-    granted: false,
-    reason: "No match",
-    initials: "?",
-  },
-  {
-    id: 3,
-    name: "Grace Nakato",
-    time: "09:31 AM",
-    granted: true,
-    initials: "GN",
-  },
-  {
-    id: 4,
-    name: "Brian Mutesasira",
-    time: "09:15 AM",
-    granted: true,
-    initials: "BM",
-  },
-  {
-    id: 5,
-    name: "Alice Namutebi",
-    time: "08:58 AM",
-    granted: false,
-    reason: "Outside hours",
-    initials: "AN",
-  },
-  {
-    id: 6,
-    name: "David Ssemakula",
-    time: "08:47 AM",
-    granted: true,
-    initials: "DS",
-  },
-  {
-    id: 7,
-    name: "Unknown",
-    time: "08:33 AM",
-    granted: false,
-    reason: "No match",
-    initials: "?",
-  },
-  {
-    id: 8,
-    name: "Ruth Namukasa",
-    time: "08:21 AM",
-    granted: true,
-    initials: "RN",
-  },
-];
 
 const avatarColors = [
   "bg-blue-100 text-blue-700",
@@ -180,7 +118,7 @@ const avatarColors = [
 // ── System Health Row ──────────────────────────────────────────────
 interface HealthItemProps {
   label: string;
-  value: number;
+  value: number | null | undefined;
   unit?: string;
   icon: string;
   ok: boolean;
@@ -192,7 +130,10 @@ const HealthItem: React.FC<HealthItemProps> = ({
   unit,
   icon,
   ok,
-}) => (
+}) => {
+  const percentage = value ?? 0;
+
+  return (
   <div className="flex items-center gap-3 py-3 border-b border-slate-100 last:border-0">
     <div
       className={`w-8 h-8 rounded-lg flex items-center justify-center ${ok ? "bg-slate-100 text-slate-500" : "bg-red-50 text-red-500"}`}
@@ -205,29 +146,48 @@ const HealthItem: React.FC<HealthItemProps> = ({
         <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
           <div
             className={`h-full rounded-full transition-all duration-700 ${
-              value > 80
+              percentage > 80
                 ? "bg-red-400"
-                : value > 60
+                : percentage > 60
                   ? "bg-amber-400"
                   : "bg-emerald-400"
             }`}
-            style={{ width: `${value}%` }}
+            style={{ width: `${percentage}%` }}
           />
         </div>
         <span className="text-xs text-slate-500 shrink-0">
-          {value}
-          {unit}
+          {value == null ? "—" : `${value}${unit ?? ""}`}
         </span>
       </div>
     </div>
   </div>
-);
+  );
+};
+
+const initials = (name: string) =>
+  name === "Unknown"
+    ? "?"
+    : name
+        .split(" ")
+        .map((part) => part[0])
+        .join("")
+        .slice(0, 2)
+        .toUpperCase();
+
+const formatUptime = (seconds?: number) => {
+  if (!seconds) return "—";
+  const days = Math.floor(seconds / 86_400);
+  const hours = Math.floor((seconds % 86_400) / 3_600);
+  const minutes = Math.floor((seconds % 3_600) / 60);
+  return `${days}d ${hours}h ${minutes}m`;
+};
 
 // ── Main Dashboard ─────────────────────────────────────────────────
 export default function DashboardPage() {
   const [time, setTime] = useState(new Date());
-  const [scannerOnline, setScannerOnline] = useState(true);
-  const [doorLocked, setDoorLocked] = useState(true);
+  const { data: dashboard, isLoading } = useDashboardSnapshot();
+  const connectionState = useDashboardLive();
+  const live = connectionState === "live";
 
   useEffect(() => {
     const t = setInterval(() => setTime(new Date()), 1000);
@@ -267,31 +227,36 @@ export default function DashboardPage() {
             <p className="text-xs text-slate-400">Local Time</p>
           </div>
 
-          <button
-            onClick={() => setDoorLocked((v) => !v)}
+          <div
             className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium transition-all ${
-              doorLocked
+              dashboard?.device.door_locked
                 ? "bg-white border-slate-200 text-slate-700 hover:border-slate-300"
                 : "bg-emerald-50 border-emerald-200 text-emerald-700"
             }`}
           >
             <Icon
               icon={
-                doorLocked ? "hugeicons:lock-password" : "hugeicons:lock-open"
+                dashboard?.device.door_locked
+                  ? "hugeicons:lock-password"
+                  : "hugeicons:lock-open"
               }
               className="text-base"
             />
-            {doorLocked ? "Door Locked" : "Door Unlocked"}
-          </button>
+            {isLoading
+              ? "Door Status —"
+              : dashboard?.device.door_locked
+                ? "Door Locked"
+                : "Door Unlocked"}
+          </div>
         </div>
       </div>
 
       {/* ── Device status banner ── */}
       <div className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-wrap items-center gap-4">
         <div className="flex items-center gap-2">
-          <LiveDot />
+          <LiveDot live={live} />
           <span className="text-sm font-semibold text-slate-800">
-            Main Entrance
+            {dashboard?.device.name ?? "AccessPi"}
           </span>
           <span className="text-xs text-slate-400 font-mono">
             accesspi.local
@@ -302,16 +267,25 @@ export default function DashboardPage() {
 
         <div className="flex items-center gap-1.5">
           <div
-            className={`w-2 h-2 rounded-full ${scannerOnline ? "bg-emerald-500" : "bg-red-500"}`}
+            className={`w-2 h-2 rounded-full ${
+              dashboard?.device.scanner_connected
+                ? "bg-emerald-500"
+                : "bg-red-500"
+            }`}
           />
           <span className="text-xs text-slate-500">
-            Scanner {scannerOnline ? "connected" : "disconnected"}
+            Scanner{" "}
+            {dashboard?.device.scanner_connected
+              ? "connected"
+              : "disconnected"}
           </span>
         </div>
 
         <div className="flex items-center gap-1.5">
           <Icon icon="hugeicons:clock-01" className="text-sm text-slate-400" />
-          <span className="text-xs text-slate-500">Uptime: 3d 4h 22m</span>
+          <span className="text-xs text-slate-500">
+            Uptime: {formatUptime(dashboard?.device.uptime_seconds)}
+          </span>
         </div>
 
         <div className="flex items-center gap-1.5">
@@ -320,13 +294,27 @@ export default function DashboardPage() {
             className="text-sm text-slate-400"
           />
           <span className="text-xs text-slate-500">
-            42 fingerprints enrolled
+            {dashboard?.scanner?.used ?? "—"} fingerprints enrolled
           </span>
         </div>
 
         <div className="ml-auto">
-          <span className="text-xs bg-emerald-50 text-emerald-700 border border-emerald-100 px-2.5 py-1 rounded-full font-medium">
-            All systems operational
+          <span
+            className={`text-xs border px-2.5 py-1 rounded-full font-medium ${
+              live
+                ? "bg-emerald-50 text-emerald-700 border-emerald-100"
+                : connectionState === "offline"
+                  ? "bg-red-50 text-red-700 border-red-100"
+                  : "bg-amber-50 text-amber-700 border-amber-100"
+            }`}
+          >
+            {live
+              ? "Live"
+              : connectionState === "offline"
+                ? "Offline"
+                : connectionState === "reconnecting"
+                  ? "Reconnecting"
+                  : "Connecting"}
           </span>
         </div>
       </div>
@@ -335,29 +323,25 @@ export default function DashboardPage() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           label="Access Granted Today"
-          value={24}
+          value={dashboard?.today.granted ?? "—"}
           icon="hugeicons:checkmark-circle-02"
-          trend="12% vs yesterday"
-          trendUp={true}
           accent="green"
         />
         <StatCard
           label="Access Denied Today"
-          value={3}
+          value={dashboard?.today.denied ?? "—"}
           icon="hugeicons:cancel-circle"
-          trend="2 fewer"
-          trendUp={true}
           accent="red"
         />
         <StatCard
           label="Total Scans Today"
-          value={27}
+          value={dashboard?.today.total ?? "—"}
           icon="hugeicons:finger-print"
           accent="blue"
         />
         <StatCard
-          label="Staff on Premises"
-          value={8}
+          label="Staff Seen Today"
+          value={dashboard?.today.staff_seen ?? "—"}
           icon="hugeicons:user-group"
           accent="amber"
         />
@@ -376,13 +360,16 @@ export default function DashboardPage() {
                 Live
               </span>
             </div>
-            <button className="text-xs text-primary hover:underline font-medium">
+            <Link
+              href="/access-logs"
+              className="text-xs text-primary hover:underline font-medium"
+            >
               View all logs →
-            </button>
+            </Link>
           </div>
 
           <div className="divide-y divide-slate-50">
-            {mockLogs.map((log, i) => (
+            {dashboard?.recent_access.map((log, i) => (
               <div
                 key={log.id}
                 className="flex items-center gap-3 px-5 py-3 hover:bg-slate-50 transition-colors"
@@ -390,38 +377,43 @@ export default function DashboardPage() {
                 {/* Avatar */}
                 <div
                   className={`w-9 h-9 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 ${
-                    log.granted
+                    log.result === "granted"
                       ? avatarColors[i % avatarColors.length]
                       : "bg-slate-100 text-slate-400"
                   }`}
                 >
-                  {log.initials}
+                  {initials(log.staff_name)}
                 </div>
 
                 {/* Name + reason */}
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium text-slate-700 truncate">
-                    {log.name}
+                    {log.staff_name}
                   </p>
-                  {log.reason && (
-                    <p className="text-xs text-red-400">{log.reason}</p>
+                  {log.deny_reason_display && (
+                    <p className="text-xs text-red-400">
+                      {log.deny_reason_display}
+                    </p>
                   )}
                 </div>
 
                 {/* Time */}
                 <span className="text-xs text-slate-400 font-mono shrink-0">
-                  {log.time}
+                  {new Date(log.timestamp).toLocaleTimeString("en-UG", {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
                 </span>
 
                 {/* Badge */}
                 <span
                   className={`text-xs font-medium px-2.5 py-1 rounded-full shrink-0 ${
-                    log.granted
+                    log.result === "granted"
                       ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
                       : "bg-red-50 text-red-600 border border-red-100"
                   }`}
                 >
-                  {log.granted ? "Granted" : "Denied"}
+                  {log.result === "granted" ? "Granted" : "Denied"}
                 </span>
               </div>
             ))}
@@ -438,31 +430,31 @@ export default function DashboardPage() {
             <p className="text-xs text-slate-400 mb-4">Live hardware metrics</p>
             <HealthItem
               label="CPU Usage"
-              value={42}
+              value={dashboard?.system?.cpu_percent}
               unit="%"
               icon="hugeicons:cpu"
-              ok={true}
+              ok={(dashboard?.system?.cpu_percent ?? 0) <= 80}
             />
             <HealthItem
               label="Memory"
-              value={28}
+              value={dashboard?.system?.memory_percent}
               unit="%"
               icon="hugeicons:hard-drive"
-              ok={true}
+              ok={(dashboard?.system?.memory_percent ?? 0) <= 80}
             />
             <HealthItem
               label="Disk"
-              value={34}
+              value={dashboard?.system?.disk_percent}
               unit="%"
               icon="hugeicons:database-02"
-              ok={true}
+              ok={(dashboard?.system?.disk_percent ?? 0) <= 80}
             />
             <HealthItem
               label="CPU Temp"
-              value={51}
+              value={dashboard?.system?.cpu_temperature}
               unit="°C"
               icon="hugeicons:temperature"
-              ok={true}
+              ok={(dashboard?.system?.cpu_temperature ?? 0) <= 80}
             />
           </div>
 
@@ -475,34 +467,39 @@ export default function DashboardPage() {
               {[
                 {
                   label: "Enroll Finger",
+                  href: "/fingerprints/enroll",
                   icon: "hugeicons:finger-print",
                   accent: "text-blue-600 bg-blue-50 border-blue-100",
                 },
                 {
                   label: "Add Staff",
+                  href: "/staff/add",
                   icon: "hugeicons:user-add-01",
                   accent: "text-violet-600 bg-violet-50 border-violet-100",
                 },
                 {
                   label: "Export Logs",
+                  href: "/access-logs",
                   icon: "hugeicons:download-02",
                   accent: "text-teal-600 bg-teal-50 border-teal-100",
                 },
                 {
                   label: "Settings",
+                  href: "/settings",
                   icon: "hugeicons:setting-07",
                   accent: "text-slate-600 bg-slate-50 border-slate-200",
                 },
               ].map((a) => (
-                <button
+                <Link
                   key={a.label}
+                  href={a.href}
                   className={`flex flex-col items-center gap-2 p-3 rounded-xl border text-center hover:shadow-sm transition-all ${a.accent}`}
                 >
                   <Icon icon={a.icon} className="text-xl" />
                   <span className="text-xs font-medium leading-tight">
                     {a.label}
                   </span>
-                </button>
+                </Link>
               ))}
             </div>
           </div>

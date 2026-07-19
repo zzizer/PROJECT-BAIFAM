@@ -17,6 +17,7 @@ import {
   SCOPES_API,
   API_KEYS_API,
   API_KEY_LOGS_API,
+  DASHBOARD_API,
 } from "@/lib/api";
 import type {
   Staff,
@@ -45,6 +46,9 @@ import type {
 // ── Query Keys ─────────────────────────────────────────────────────────────────
 
 export const QK = {
+  dashboard: {
+    snapshot: () => ["dashboard"] as const,
+  },
   staff: {
     all: () => ["staff"] as const,
     list: (p?: PaginationParams) => ["staff", "list", p] as const,
@@ -86,6 +90,14 @@ export const QK = {
       ["api-key-logs", "list", p] as const,
   },
 } as const;
+
+export function useDashboardSnapshot() {
+  return useQuery({
+    queryKey: QK.dashboard.snapshot(),
+    queryFn: () => DASHBOARD_API.get(),
+    refetchInterval: 60_000,
+  });
+}
 
 // ── Staff ──────────────────────────────────────────────────────────────────────
 

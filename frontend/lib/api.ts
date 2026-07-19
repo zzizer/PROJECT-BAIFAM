@@ -30,6 +30,7 @@ import type {
   CreateAPIKeyPayload,
   UpdateAPIKeyPayload,
   APIKeyRequestLog,
+  DashboardSnapshot,
 } from "@/types";
 
 // ── Auth ───────────────────────────────────────────────────────────────────────
@@ -83,6 +84,13 @@ export const FINGERPRINT_METADATA_API = {
 export const LOGS_API = createResourceAPI<AccessLog>(
   "/fingerprints/access-logs",
 );
+
+export const DASHBOARD_API = {
+  get: () =>
+    apiClient
+      .get<DashboardSnapshot>("/system/dashboard/")
+      .then((response) => response.data),
+};
 
 // ── Access Rules ───────────────────────────────────────────────────────────────
 export const ACCESS_RULES_API = createResourceAPI<
