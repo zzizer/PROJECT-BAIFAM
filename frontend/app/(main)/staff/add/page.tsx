@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRoleList, useDepartmentList, useCreateStaff } from "@/hooks";
 import { STAFF_API } from "@/lib/api"; // fallback if needed
+import { FormattedDatePicker } from "@/components/commons/formatted-date-picker";
 
 const inputCls =
   "w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-slate-400 bg-white text-slate-800 placeholder:text-slate-400";
@@ -349,22 +350,23 @@ export default function StaffAddPage() {
 
             <div className="grid grid-cols-2 gap-3 mt-4">
               <Field label="Valid From">
-                <input
-                  type="date"
-                  className={inputCls}
+                <FormattedDatePicker
                   value={perm.valid_from}
-                  onChange={(e) =>
-                    setPerm((p) => ({ ...p, valid_from: e.target.value }))
+                  onChange={(date) =>
+                    setPerm((p) => ({ ...p, valid_from: date ?? "" }))
                   }
                 />
               </Field>
               <Field label="Valid Until">
-                <input
-                  type="date"
-                  className={inputCls}
+                <FormattedDatePicker
                   value={perm.valid_until}
-                  onChange={(e) =>
-                    setPerm((p) => ({ ...p, valid_until: e.target.value }))
+                  onChange={(date) =>
+                    setPerm((p) => ({ ...p, valid_until: date ?? "" }))
+                  }
+                  minDate={
+                    perm.valid_from
+                      ? new Date(`${perm.valid_from}T00:00:00`)
+                      : undefined
                   }
                 />
               </Field>

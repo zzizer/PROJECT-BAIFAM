@@ -8,6 +8,7 @@ import PaginatedTable, {
 import { AccessLog } from "@/types";
 import { useAccessLogs } from "@/hooks";
 import { formatTimestamp } from "@/utils";
+import { FormattedDatePicker } from "@/components/commons/formatted-date-picker";
 
 const getInitials = (name: string) =>
   name === "Unknown"
@@ -265,18 +266,19 @@ export default function LogsPage() {
         </select>
 
         <div className="flex items-center gap-2">
-          <input
-            type="date"
+          <FormattedDatePicker
             value={dateFrom}
-            onChange={(e) => handleDateFrom(e.target.value)}
-            className="px-3 py-2.5 text-sm border border-slate-200 rounded-xl bg-white focus:outline-none text-slate-700"
+            onChange={(date) => handleDateFrom(date ?? "")}
+            className="w-40"
           />
           <span className="text-slate-400 text-sm">to</span>
-          <input
-            type="date"
+          <FormattedDatePicker
             value={dateTo}
-            onChange={(e) => handleDateTo(e.target.value)}
-            className="px-3 py-2.5 text-sm border border-slate-200 rounded-xl bg-white focus:outline-none text-slate-700"
+            onChange={(date) => handleDateTo(date ?? "")}
+            minDate={
+              dateFrom ? new Date(`${dateFrom}T00:00:00`) : undefined
+            }
+            className="w-40"
           />
         </div>
 

@@ -3,6 +3,7 @@
 import React, { useState, useRef, useCallback } from "react";
 import { Icon } from "@iconify/react";
 import PaginatedTable, { Column } from "@/components/commons/paginated-table";
+import { FormattedDatePicker } from "@/components/commons/formatted-date-picker";
 import {
   useAPIKeyList,
   useCreateAPIKey,
@@ -255,11 +256,9 @@ const CreateModal = ({
             <label className="text-xs font-medium text-slate-500 uppercase tracking-wide block">
               Expires At <span className="text-slate-300">(optional)</span>
             </label>
-            <input
-              type="date"
-              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-slate-400 bg-white text-slate-800"
+            <FormattedDatePicker
               value={expires}
-              onChange={(e) => setExpires(e.target.value)}
+              onChange={(date) => setExpires(date ?? "")}
             />
           </div>
         </div>
@@ -385,11 +384,9 @@ const EditModal = ({
             <label className="text-xs font-medium text-slate-500 uppercase tracking-wide block">
               Expires At <span className="text-slate-300">(optional)</span>
             </label>
-            <input
-              type="date"
-              className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:border-slate-400 bg-white text-slate-800"
+            <FormattedDatePicker
               value={expires}
-              onChange={(e) => setExpires(e.target.value)}
+              onChange={(date) => setExpires(date ?? "")}
             />
           </div>
         </div>

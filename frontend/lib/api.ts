@@ -131,7 +131,7 @@ export const DEVICE_SETTINGS_API = {
 export const SCOPES_API = {
   getAll: () =>
     apiClient
-      .get<PaginatedResponse<Scope>>("/system/scopes/")
+      .get<PaginatedResponse<Scope>>("/system/scopes/?page_size=100")
       .then((r) => r.data),
 };
 

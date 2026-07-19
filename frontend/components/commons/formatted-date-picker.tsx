@@ -54,6 +54,7 @@ export function FormattedDatePicker({
 
   useEffect(() => {
     if (!value) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- synchronize controlled value with segmented inputs
       setDay("");
       setMonth("");
       setYear("");
@@ -153,9 +154,9 @@ export function FormattedDatePicker({
     const input = nativeInputRef.current;
     if (!input || disabled) return;
 
-    if ("showPicker" in input) {
+    try {
       input.showPicker();
-    } else {
+    } catch {
       input.focus();
       input.click();
     }
