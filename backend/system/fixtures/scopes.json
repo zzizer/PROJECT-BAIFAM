@@ -30,6 +30,11 @@
     "description": "GET /api/status/"
   },
   {
+    "value": "dashboard:read",
+    "label": "Read Dashboard",
+    "description": "GET /api/system/dashboard/ and /ws/dashboard/"
+  },
+  {
     "value": "read:settings",
     "label": "Read Settings",
     "description": "GET /api/device/settings/"

@@ -10,6 +10,10 @@ from daemon.manager import fingerprint_manager
 
 class FingerprintConsumer(AsyncWebsocketConsumer):
     async def connect(self):
+        if not self.scope["user"].is_authenticated:
+            await self.close(code=4401)
+            return
+
         self.room_group_name = f"scanner_{uuid4().hex}"
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
         await self.accept()
@@ -27,7 +31,19 @@ class FingerprintConsumer(AsyncWebsocketConsumer):
         await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
 
     async def receive(self, text_data):
-        data = json.loads(text_data)
+        try:
+            data = json.loads(text_data)
+        except json.JSONDecodeError:
+            await self.send(
+                text_data=json.dumps(
+                    {
+                        "type": "error",
+                        "message": "Invalid WebSocket message.",
+                    }
+                )
+            )
+            return
+
         command = data.get("command")
 
         if command == "start_enroll":
@@ -49,6 +65,16 @@ class FingerprintConsumer(AsyncWebsocketConsumer):
                 args=(staff_base_uuid,),
                 daemon=True,
             ).start()
+            return
+
+        await self.send(
+            text_data=json.dumps(
+                {
+                    "type": "error",
+                    "message": "Unsupported scanner command.",
+                }
+            )
+        )
 
     def _enroll_process(self, staff_base_uuid: str):
         try:

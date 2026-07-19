@@ -12,6 +12,7 @@ import {
 import { FINGERPRINTS_API } from "@/lib/api";
 import type { Staff } from "@/types";
 import { toast } from "sonner";
+import { useAppSelector } from "@/store/hooks";
 
 // ── Types ──────────────────────────────────────────────────────────
 type EnrollStep =
@@ -366,6 +367,7 @@ const StaffDropdown = ({
 export default function EnrollPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const accessToken = useAppSelector((state) => state.auth.accessToken);
   // Query param is the staff's internal_base_uuid
   const preselectedUuid = searchParams?.get("staff") ?? "";
 
@@ -421,10 +423,13 @@ export default function EnrollPage() {
   };
 
   const connectWebSocket = useCallback(() => {
-    if (!staffUuid) return;
+    if (!staffUuid || !accessToken) {
+      setStep("error");
+      setErrorMessage("Your session has expired. Please sign in again.");
+      return;
+    }
 
-    // Simplified version - no token for now
-    const wsUrl = buildWsUrl("ABC123"); // or modify buildWsUrl temporarily
+    const wsUrl = buildWsUrl(accessToken);
 
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
@@ -489,10 +494,17 @@ export default function EnrollPage() {
     ws.onclose = () => {
       wsRef.current = null;
     };
-  }, [staffUuid, selectedFinger, label]);
+  }, [accessToken, staffUuid, selectedFinger, label]);
 
   const handleStart = () => {
-    if (!staffUuid || selectedFinger === null || isRunning) return;
+    if (
+      !staffUuid ||
+      !accessToken ||
+      selectedFinger === null ||
+      isRunning
+    ) {
+      return;
+    }
     setStep("scanning_first");
     setErrorMessage("");
     setSlot(null);
@@ -629,7 +641,9 @@ export default function EnrollPage() {
             {step === "idle" || step === "error" ? (
               <button
                 onClick={handleStart}
-                disabled={!staffUuid || selectedFinger === null}
+                disabled={
+                  !staffUuid || !accessToken || selectedFinger === null
+                }
                 className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary-hover transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Icon icon="hugeicons:finger-print" className="text-base" />

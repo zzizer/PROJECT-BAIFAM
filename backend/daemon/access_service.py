@@ -4,10 +4,13 @@ from dataclasses import dataclass
 from typing import Optional
 
 from django.utils import timezone
+from django.db import transaction
 
 from device.models import DeviceSettings
 from fingerprints.models import AccessLog, Fingerprint
 from staff.models import AccessPermission
+from fingerprints.serializers import AccessLogSerializer
+from system.dashboard import publish_dashboard_event
 
 
 @dataclass(slots=True)
@@ -156,7 +159,7 @@ class AccessDecisionService:
         )
 
     def record_log(self, decision: AccessDecision) -> AccessLog:
-        return AccessLog.objects.create(
+        access_log = AccessLog.objects.create(
             staff=decision.staff,
             fingerprint=decision.fingerprint,
             result=(
@@ -169,6 +172,15 @@ class AccessDecisionService:
             scanner_slot=decision.slot,
             timestamp=timezone.now(),
         )
+
+        transaction.on_commit(
+            lambda: publish_dashboard_event(
+                "access.recorded",
+                AccessLogSerializer(access_log).data,
+            )
+        )
+
+        return access_log
 
     def should_log_unknown_finger(self) -> bool:
         return DeviceSettings.get().allow_unknown_finger_log

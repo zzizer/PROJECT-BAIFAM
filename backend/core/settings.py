@@ -178,6 +178,14 @@ CHANNEL_LAYERS = {
     },
 }
 
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.redis.RedisCache",
+        "LOCATION": os.environ.get("REDIS_URL", "redis://localhost:6379/10"),
+        "KEY_PREFIX": "accesspi",
+    }
+}
+
 CELERY_BROKER_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/10")
 CELERY_RESULT_BACKEND = os.environ.get("REDIS_URL", "redis://localhost:6379/10")
 CELERY_TASK_DEFAULT_QUEUE = "supraledger_queue"
