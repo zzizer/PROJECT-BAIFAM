@@ -264,6 +264,11 @@ const menuItems: MenuItem[] = [
     icon: "hugeicons:api",
     href: "/api-keys-mgt",
   },
+  {
+    label: "Terminal",
+    icon: "hugeicons:computer-terminal-01",
+    href: "/terminal",
+  },
 ];
 
 const Sidebar: React.FC<SidebarProps> = ({ isCollapsed, setIsCollapsed }) => {

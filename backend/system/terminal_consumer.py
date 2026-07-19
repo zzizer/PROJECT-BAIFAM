@@ -38,7 +38,7 @@ class TerminalConsumer(AsyncWebsocketConsumer):
             await self.close(code=4403)
             return
 
-        if not user.is_authenticated or not user.is_staff:
+        if not user.is_authenticated:
             await self.close(code=4403)
             return
 

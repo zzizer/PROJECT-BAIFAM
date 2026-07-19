@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "@xterm/xterm/css/xterm.css";
 import localFont from "next/font/local";
 import { cn } from "@/utils";
 import StoreProvider from "@/store/StoreProvider";
