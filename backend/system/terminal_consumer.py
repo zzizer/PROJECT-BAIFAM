@@ -27,6 +27,11 @@ MAX_ROWS = 120
 
 class TerminalConsumer(AsyncWebsocketConsumer):
     async def connect(self):
+        self.master_fd = None
+        self.process = None
+        self.reader_thread = None
+        self.idle_task = None
+
         user = self.scope["user"]
 
         if not settings.ENABLE_WEB_TERMINAL:
@@ -37,10 +42,6 @@ class TerminalConsumer(AsyncWebsocketConsumer):
             await self.close(code=4403)
             return
 
-        self.master_fd = None
-        self.process = None
-        self.reader_thread = None
-        self.idle_task = None
         self.last_activity = time.monotonic()
         self.loop = asyncio.get_running_loop()
 
