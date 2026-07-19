@@ -104,13 +104,6 @@ const ScopeSelector = ({
     }
   }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
 
-  const selectAllRef = useCallback(
-    (el: HTMLInputElement | null) => {
-      if (el) el.indeterminate = someSelected;
-    },
-    [someSelected],
-  );
-
   return (
     <div className="space-y-2">
       {/* Select all row */}
@@ -118,7 +111,9 @@ const ScopeSelector = ({
         <label className="flex items-center gap-2 cursor-pointer select-none">
           <input
             type="checkbox"
-            ref={selectAllRef}
+            ref={(element) => {
+              if (element) element.indeterminate = someSelected;
+            }}
             checked={allSelected}
             onChange={toggleAll}
             disabled={hasNextPage}

@@ -252,53 +252,56 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Device status banner ── */}
-      <div className="bg-white border border-slate-200 rounded-2xl p-4 flex flex-wrap items-center gap-4">
-        <div className="flex items-center gap-2">
+      <div className="flex flex-col gap-4 rounded-2xl border border-slate-200 bg-white p-4 lg:flex-row lg:items-center">
+        <div className="flex min-w-0 items-center gap-2 lg:w-64 lg:shrink-0">
           <LiveDot live={live} />
-          <span className="text-sm font-semibold text-slate-800">
+          <span className="truncate text-sm font-semibold text-slate-800">
             {dashboard?.device.name ?? "AccessPi"}
           </span>
-          <span className="text-xs text-slate-400 font-mono">
+          <span className="relative top-px shrink-0 text-xs font-mono text-slate-400">
             accesspi.local
           </span>
         </div>
 
-        <div className="w-px h-4 bg-slate-200 hidden sm:block" />
+        <div className="grid flex-1 grid-cols-1 gap-3 border-slate-200 sm:grid-cols-3 lg:border-l lg:pl-4">
+          <div className="flex min-w-0 items-center gap-1.5">
+            <div
+              className={`h-2 w-2 shrink-0 rounded-full ${
+                dashboard?.device.scanner_connected
+                  ? "bg-emerald-500"
+                  : "bg-red-500"
+              }`}
+            />
+            <span className="truncate text-xs text-slate-500">
+              Scanner{" "}
+              {dashboard?.device.scanner_connected
+                ? "connected"
+                : "disconnected"}
+            </span>
+          </div>
 
-        <div className="flex items-center gap-1.5">
-          <div
-            className={`w-2 h-2 rounded-full ${
-              dashboard?.device.scanner_connected
-                ? "bg-emerald-500"
-                : "bg-red-500"
-            }`}
-          />
-          <span className="text-xs text-slate-500">
-            Scanner{" "}
-            {dashboard?.device.scanner_connected
-              ? "connected"
-              : "disconnected"}
-          </span>
+          <div className="flex min-w-0 items-center gap-1.5">
+            <Icon
+              icon="hugeicons:clock-01"
+              className="shrink-0 text-sm text-slate-400"
+            />
+            <span className="truncate text-xs text-slate-500">
+              Uptime: {formatUptime(dashboard?.device.uptime_seconds)}
+            </span>
+          </div>
+
+          <div className="flex min-w-0 items-center gap-1.5">
+            <Icon
+              icon="hugeicons:finger-print"
+              className="shrink-0 text-sm text-slate-400"
+            />
+            <span className="truncate text-xs text-slate-500">
+              {dashboard?.scanner?.used ?? "—"} fingerprints enrolled
+            </span>
+          </div>
         </div>
 
-        <div className="flex items-center gap-1.5">
-          <Icon icon="hugeicons:clock-01" className="text-sm text-slate-400" />
-          <span className="text-xs text-slate-500">
-            Uptime: {formatUptime(dashboard?.device.uptime_seconds)}
-          </span>
-        </div>
-
-        <div className="flex items-center gap-1.5">
-          <Icon
-            icon="hugeicons:finger-print"
-            className="text-sm text-slate-400"
-          />
-          <span className="text-xs text-slate-500">
-            {dashboard?.scanner?.used ?? "—"} fingerprints enrolled
-          </span>
-        </div>
-
-        <div className="ml-auto">
+        <div className="shrink-0 self-start lg:self-auto">
           <span
             className={`text-xs border px-2.5 py-1 rounded-full font-medium ${
               live

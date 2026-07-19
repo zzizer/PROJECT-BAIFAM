@@ -5,6 +5,7 @@ import { Icon } from "@iconify/react";
 import { useRouter } from "next/navigation";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { logout } from "@/store/slices/authSlice";
+import { useDashboardSnapshot } from "@/hooks";
 
 interface TopBarProps {
   isCollapsed: boolean;
@@ -26,6 +27,7 @@ const TopBar: React.FC<TopBarProps> = ({ isCollapsed, setIsCollapsed }) => {
   const router = useRouter();
   const dispatch = useAppDispatch();
   const { user, refreshToken, isLoading } = useAppSelector((s) => s.auth);
+  const { data: dashboard } = useDashboardSnapshot();
 
   const initials = getInitials(user?.fullname ?? "", user?.email ?? "");
   const displayName = user?.fullname?.trim() || user?.email || "User";
@@ -80,9 +82,15 @@ const TopBar: React.FC<TopBarProps> = ({ isCollapsed, setIsCollapsed }) => {
 
       <div className="flex items-center gap-3 px-6">
         <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-full">
-          <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+          <span
+            className={`w-2 h-2 rounded-full shrink-0 ${
+              dashboard?.device.scanner_connected
+                ? "bg-emerald-500 animate-pulse"
+                : "bg-red-500"
+            }`}
+          />
           <span className="text-xs text-slate-600 font-medium">
-            Main Entrance
+            {dashboard?.device.name ?? "AccessPi Device"}
           </span>
         </div>
 
@@ -91,7 +99,6 @@ const TopBar: React.FC<TopBarProps> = ({ isCollapsed, setIsCollapsed }) => {
             icon="hugeicons:notification-02"
             className="text-xl text-slate-600"
           />
-          <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
         </button>
 
         <div className="relative">
