@@ -15,6 +15,7 @@ import type {
   CreateDepartmentPayload,
   UpdateDepartmentPayload,
   Fingerprint,
+  FingerprintMetadata,
   EnrollFingerprintPayload,
   AccessLog,
   AccessRule,
@@ -71,6 +72,13 @@ export const FINGERPRINTS_API = createResourceAPI<
   EnrollFingerprintPayload
 >("/fingerprints");
 
+export const FINGERPRINT_METADATA_API = {
+  get: () =>
+    apiClient
+      .get<FingerprintMetadata>("/fingerprints/metadata/")
+      .then((response) => response.data),
+};
+
 // ── Access Logs ────────────────────────────────────────────────────────────────
 export const LOGS_API = createResourceAPI<AccessLog>(
   "/fingerprints/access-logs",
@@ -97,6 +105,16 @@ export const DEVICE_SETTINGS_API = {
   update: (data: UpdateDeviceSettingsPayload) =>
     apiClient
       .patch<DeviceSettings>("/device/settings/", data)
+      .then((r) => r.data),
+
+  reset: () =>
+    apiClient
+      .post<DeviceSettings>("/device/settings/reset/")
+      .then((r) => r.data),
+
+  restart: () =>
+    apiClient
+      .post<{ detail: string }>("/device/restart/")
       .then((r) => r.data),
 };
 

@@ -11,6 +11,21 @@ FINGERPRINT_TEMPLATE_SIZE = settings.FINGERPRINT_TEMPLATE_SIZE
 
 
 class DeviceSettings(models.Model):
+    RESETTABLE_FIELDS = (
+        "device_name",
+        "device_location",
+        "timezone",
+        "unlock_duration_sec",
+        "require_2finger_confirm",
+        "allow_unknown_finger_log",
+        "buzzer_enabled",
+        "buzzer_volume",
+        "lockout_duration_mins",
+        "max_failed_attempts",
+        "max_duration_before_sleep_if_idle",
+        "max_fingerprints_per_staff",
+    )
+
     device_name = models.CharField(max_length=255, default="BAIFAM Device")
     device_location = models.CharField(max_length=255, blank=True, null=True)
 
@@ -103,3 +118,11 @@ class DeviceSettings(models.Model):
             },
         )
         return obj
+
+    def reset_to_defaults(self):
+        for field_name in self.RESETTABLE_FIELDS:
+            field = self._meta.get_field(field_name)
+            setattr(self, field_name, field.get_default())
+
+        self.save(update_fields=self.RESETTABLE_FIELDS)
+        return self

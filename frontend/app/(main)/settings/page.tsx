@@ -4,7 +4,12 @@ import React, { useState, useEffect } from "react";
 import { Icon } from "@iconify/react";
 import { toast } from "sonner";
 
-import { useDeviceSettings, useUpdateDeviceSettings } from "@/hooks";
+import {
+  useDeviceSettings,
+  useResetDeviceSettings,
+  useRestartDevice,
+  useUpdateDeviceSettings,
+} from "@/hooks";
 import type { UpdateDeviceSettingsPayload } from "@/types";
 import { TimezoneSelect } from "@/components/commons/timezone-select";
 
@@ -22,6 +27,77 @@ interface SettingsForm {
   max_failed_attempts: number;
   max_duration_before_sleep_if_idle: number;
 }
+
+type DangerAction = "reset" | "restart" | null;
+
+const DangerConfirmationDialog = ({
+  action,
+  pending,
+  onCancel,
+  onConfirm,
+}: {
+  action: DangerAction;
+  pending: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) => {
+  if (!action) return null;
+
+  const isReset = action === "reset";
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="danger-dialog-title"
+    >
+      <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
+        <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl bg-red-50">
+          <Icon
+            icon={isReset ? "hugeicons:refresh" : "hugeicons:restart"}
+            className="text-xl text-red-500"
+          />
+        </div>
+        <h3
+          id="danger-dialog-title"
+          className="text-base font-semibold text-slate-800"
+        >
+          {isReset ? "Reset device settings?" : "Restart device?"}
+        </h3>
+        <p className="mt-2 text-sm text-slate-500">
+          {isReset
+            ? "All configurable device settings will be restored to their factory defaults."
+            : "The Raspberry Pi and all AccessPi services will become temporarily unavailable while restarting."}
+        </p>
+        <div className="mt-6 flex gap-3">
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={pending}
+            className="flex-1 rounded-xl border border-slate-200 px-4 py-2.5 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={pending}
+            className="flex-1 rounded-xl bg-red-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-60"
+          >
+            {pending
+              ? isReset
+                ? "Resetting..."
+                : "Restarting..."
+              : isReset
+                ? "Reset Settings"
+                : "Restart Device"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 // ── Sub-components (unchanged) ─────────────────────────────────────
 
@@ -177,6 +253,9 @@ const Card = ({ children }: { children: React.ReactNode }) => (
 export default function SettingsPage() {
   const { data: settingsData, isLoading } = useDeviceSettings();
   const updateDeviceSettings = useUpdateDeviceSettings();
+  const resetDeviceSettings = useResetDeviceSettings();
+  const restartDevice = useRestartDevice();
+  const [dangerAction, setDangerAction] = useState<DangerAction>(null);
 
   const [settings, setSettings] = useState<SettingsForm>({
     device_name: "",
@@ -251,6 +330,37 @@ export default function SettingsPage() {
       console.error(error);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleResetSettings = async () => {
+    try {
+      await resetDeviceSettings.mutateAsync();
+      setSaved(false);
+      setDangerAction(null);
+      toast.success("Settings reset to factory defaults");
+    } catch (error) {
+      toast.error("Failed to reset settings");
+      console.error(error);
+    }
+  };
+
+  const handleRestartDevice = async () => {
+    try {
+      await restartDevice.mutateAsync();
+      setDangerAction(null);
+      toast.success("Device restart scheduled");
+    } catch (error) {
+      toast.error("Failed to restart device");
+      console.error(error);
+    }
+  };
+
+  const handleDangerConfirm = () => {
+    if (dangerAction === "reset") {
+      void handleResetSettings();
+    } else if (dangerAction === "restart") {
+      void handleRestartDevice();
     }
   };
 
@@ -490,8 +600,13 @@ export default function SettingsPage() {
               Restores all settings above to their original values.
             </p>
           </div>
-          <button className="px-4 py-2 text-sm font-medium text-red-600 border border-red-200 rounded-xl hover:bg-red-50 transition-colors shrink-0 ml-6">
-            Reset Settings
+          <button
+            type="button"
+            onClick={() => setDangerAction("reset")}
+            disabled={resetDeviceSettings.isPending}
+            className="px-4 py-2 text-sm font-medium text-red-600 border border-red-200 rounded-xl hover:bg-red-50 transition-colors shrink-0 ml-6 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {resetDeviceSettings.isPending ? "Resetting..." : "Reset Settings"}
           </button>
         </div>
         <div className="flex items-center justify-between py-3">
@@ -501,11 +616,23 @@ export default function SettingsPage() {
               Reboots the Raspberry Pi. All services restart automatically.
             </p>
           </div>
-          <button className="px-4 py-2 text-sm font-medium text-red-600 border border-red-200 rounded-xl hover:bg-red-50 transition-colors shrink-0 ml-6">
+          <button
+            type="button"
+            onClick={() => setDangerAction("restart")}
+            disabled={restartDevice.isPending}
+            className="px-4 py-2 text-sm font-medium text-red-600 border border-red-200 rounded-xl hover:bg-red-50 transition-colors shrink-0 ml-6 disabled:cursor-not-allowed disabled:opacity-60"
+          >
             Restart
           </button>
         </div>
       </div>
+
+      <DangerConfirmationDialog
+        action={dangerAction}
+        pending={resetDeviceSettings.isPending || restartDevice.isPending}
+        onCancel={() => setDangerAction(null)}
+        onConfirm={handleDangerConfirm}
+      />
     </div>
   );
 }

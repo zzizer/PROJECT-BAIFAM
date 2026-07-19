@@ -40,6 +40,11 @@
     "description": "PUT /api/device/settings/"
   },
   {
+    "value": "restart:device",
+    "label": "Restart Device",
+    "description": "POST /api/device/restart/"
+  },
+  {
     "value": "read:fingerprints",
     "label": "Read Fingerprints",
     "description": "GET /api/fingerprints/"

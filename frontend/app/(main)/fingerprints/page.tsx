@@ -6,7 +6,11 @@ import Link from "next/link";
 import PaginatedTable, {
   type Column,
 } from "@/components/commons/paginated-table";
-import { useFingerprintList, useDeleteFingerprint } from "@/hooks";
+import {
+  useDeleteFingerprint,
+  useFingerprintList,
+  useFingerprintMetadata,
+} from "@/hooks";
 import { toast } from "sonner";
 import type { Fingerprint } from "@/types";
 
@@ -51,8 +55,6 @@ const getInitials = (name: string) =>
 const fingerLabel = (finger: string) =>
   finger.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
 
-const SCANNER_CAPACITY = 128;
-
 export default function FingerprintsPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
@@ -67,14 +69,17 @@ export default function FingerprintsPage() {
     page_size: pageSize,
     search: search || undefined,
   });
+  const { data: metadata } = useFingerprintMetadata();
 
   const deleteFingerprint = useDeleteFingerprint();
 
   const fingerprints: Fingerprint[] = data?.results ?? [];
   const total = data?.count ?? 0;
 
-  const usedSlots = fingerprints.filter((f) => f.is_active).length;
-  const usedPct = Math.round((usedSlots / SCANNER_CAPACITY) * 100);
+  const usedSlots = metadata?.storage.used;
+  const capacity = metadata?.storage.capacity;
+  const remainingSlots = metadata?.storage.remaining;
+  const usedPct = metadata?.storage.percentage ?? 0;
 
   const filtered = fingerprints.filter((f) => {
     const matchSearch =
@@ -208,7 +213,7 @@ export default function FingerprintsPage() {
             Fingerprints
           </h1>
           <p className="text-sm text-slate-500 mt-0.5">
-            {usedSlots} enrolled &middot; {SCANNER_CAPACITY - usedSlots} slots
+            {usedSlots ?? "—"} enrolled &middot; {remainingSlots ?? "—"} slots
             remaining
           </p>
         </div>
@@ -232,7 +237,7 @@ export default function FingerprintsPage() {
               Scanner Storage
             </p>
             <span className="text-xs text-slate-500 font-mono">
-              {usedSlots} / {SCANNER_CAPACITY} slots
+              {usedSlots ?? "—"} / {capacity ?? "—"} slots
             </span>
           </div>
           <div className="h-2 bg-slate-100 rounded-full overflow-hidden">

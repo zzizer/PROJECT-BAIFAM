@@ -14,6 +14,61 @@ from .serializers import (
     FingerprintSerializer,
 )
 from django.db.models import Count, Q
+from daemon.manager import fingerprint_manager
+from daemon.scanner import ScannerError
+from device.models import DeviceSettings
+
+
+class FingerprintMetadataView(APIView):
+    required_scopes = {
+        "GET": ["fingerprints:read"],
+    }
+
+    @extend_schema(
+        summary="Get Fingerprint Metadata",
+        description=(
+            "Returns scanner storage information, supported finger choices, "
+            "and the configured per-staff fingerprint limit."
+        ),
+        tags=["Fingerprints"],
+        responses={
+            200: {
+                "description": "Fingerprint metadata.",
+                "type": "object",
+            },
+            503: OpenApiResponse(description="Scanner unavailable"),
+        },
+    )
+    def get(self, request):
+        try:
+            used, capacity = fingerprint_manager.storage_info()
+        except (BlockingIOError, OSError, ScannerError):
+            return Response(
+                {"detail": "Fingerprint scanner is busy or unavailable."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        remaining = max(capacity - used, 0)
+        percentage = round((used / capacity) * 100) if capacity else 0
+        device_settings = DeviceSettings.get()
+
+        return Response(
+            {
+                "storage": {
+                    "used": used,
+                    "capacity": capacity,
+                    "remaining": remaining,
+                    "percentage": percentage,
+                },
+                "finger_options": [
+                    {"value": value, "label": label}
+                    for value, label in Fingerprint.FINGER_CHOICES
+                ],
+                "max_fingerprints_per_staff": (
+                    device_settings.max_fingerprints_per_staff
+                ),
+            }
+        )
 
 
 class FingerprintListCreateView(APIView):

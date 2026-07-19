@@ -4,7 +4,11 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import { Icon } from "@iconify/react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useStaffList, useStaffDetail } from "@/hooks";
+import {
+  useFingerprintMetadata,
+  useStaffDetail,
+  useStaffList,
+} from "@/hooks";
 import { FINGERPRINTS_API } from "@/lib/api";
 import type { Staff } from "@/types";
 import { toast } from "sonner";
@@ -24,20 +28,6 @@ interface WSMessage {
   slot?: number;
   staff_base_uuid?: string;
 }
-
-// ── Constants ──────────────────────────────────────────────────────
-const FINGER_OPTIONS = [
-  { value: "right_thumb", label: "Right Thumb" },
-  { value: "right_index", label: "Right Index" },
-  { value: "right_middle", label: "Right Middle" },
-  { value: "right_ring", label: "Right Ring" },
-  { value: "right_little", label: "Right Little" },
-  { value: "left_thumb", label: "Left Thumb" },
-  { value: "left_index", label: "Left Index" },
-  { value: "left_middle", label: "Left Middle" },
-  { value: "left_ring", label: "Left Ring" },
-  { value: "left_little", label: "Left Little" },
-];
 
 const stepMessages: Record<
   EnrollStep,
@@ -380,7 +370,7 @@ export default function EnrollPage() {
   const preselectedUuid = searchParams?.get("staff") ?? "";
 
   const [staffUuid, setStaffUuid] = useState<string>(preselectedUuid);
-  const [finger, setFinger] = useState("right_thumb");
+  const [finger, setFinger] = useState<number | null>(null);
   const [label, setLabel] = useState("");
   const [step, setStep] = useState<EnrollStep>("idle");
   const [errorMessage, setErrorMessage] = useState("");
@@ -392,6 +382,9 @@ export default function EnrollPage() {
   const { data: selectedStaff } = useStaffDetail(staffUuid, {
     enabled: !!staffUuid,
   });
+  const { data: metadata, isLoading: metadataLoading } =
+    useFingerprintMetadata();
+  const selectedFinger = finger ?? metadata?.finger_options[0]?.value ?? null;
 
   const isRunning = step !== "idle" && step !== "done" && step !== "error";
   const inputCls =
@@ -408,11 +401,13 @@ export default function EnrollPage() {
     slotNumber: number,
     staffBaseUuid: string,
   ) => {
+    if (selectedFinger === null) return;
+
     setIsSaving(true);
     try {
       await FINGERPRINTS_API.create({
         staff: staffBaseUuid,
-        finger_index: finger,
+        finger_index: selectedFinger,
         slot: slotNumber,
         ...(label.trim() ? { label: label.trim() } : {}),
       });
@@ -441,7 +436,7 @@ export default function EnrollPage() {
         JSON.stringify({
           command: "start_enroll",
           staff_base_uuid: staffUuid,
-          finger_type: finger,
+          finger_type: selectedFinger,
           label: label.trim() || null,
         }),
       );
@@ -494,10 +489,10 @@ export default function EnrollPage() {
     ws.onclose = () => {
       wsRef.current = null;
     };
-  }, [staffUuid, finger, label]);
+  }, [staffUuid, selectedFinger, label]);
 
   const handleStart = () => {
-    if (!staffUuid || isRunning) return;
+    if (!staffUuid || selectedFinger === null || isRunning) return;
     setStep("scanning_first");
     setErrorMessage("");
     setSlot(null);
@@ -600,11 +595,12 @@ export default function EnrollPage() {
                 </label>
                 <select
                   className={inputCls}
-                  value={finger}
-                  onChange={(e) => setFinger(e.target.value)}
-                  disabled={isRunning}
+                  value={selectedFinger ?? ""}
+                  onChange={(e) => setFinger(Number(e.target.value))}
+                  disabled={isRunning || metadataLoading || !metadata}
                 >
-                  {FINGER_OPTIONS.map((f) => (
+                  {!metadata && <option value="">Scanner unavailable</option>}
+                  {metadata?.finger_options.map((f) => (
                     <option key={f.value} value={f.value}>
                       {f.label}
                     </option>
@@ -633,7 +629,7 @@ export default function EnrollPage() {
             {step === "idle" || step === "error" ? (
               <button
                 onClick={handleStart}
-                disabled={!staffUuid}
+                disabled={!staffUuid || selectedFinger === null}
                 className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary-hover transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Icon icon="hugeicons:finger-print" className="text-base" />

@@ -148,8 +148,24 @@ export interface Fingerprint {
 }
 
 export interface EnrollFingerprintPayload {
-  staff_id: number;
+  staff: string;
   finger_index: number;
+  slot: number;
+  label?: string;
+}
+
+export interface FingerprintMetadata {
+  storage: {
+    used: number;
+    capacity: number;
+    remaining: number;
+    percentage: number;
+  };
+  finger_options: Array<{
+    value: number;
+    label: string;
+  }>;
+  max_fingerprints_per_staff: number;
 }
 
 // ── Access Logs ────────────────────────────────────────────────────────────────

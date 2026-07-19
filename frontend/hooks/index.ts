@@ -11,6 +11,7 @@ import {
   ROLES_API,
   DEPARTMENTS_API,
   FINGERPRINTS_API,
+  FINGERPRINT_METADATA_API,
   LOGS_API,
   DEVICE_SETTINGS_API,
   SCOPES_API,
@@ -59,6 +60,7 @@ export const QK = {
   },
   fingerprints: {
     all: () => ["fingerprints"] as const,
+    metadata: () => ["fingerprints", "metadata"] as const,
     list: (p?: PaginationParams) => ["fingerprints", "list", p] as const,
     byStaff: (staffId: number) => ["fingerprints", "staff", staffId] as const,
   },
@@ -214,6 +216,14 @@ export function useFingerprintList(params?: PaginationParams) {
   });
 }
 
+export function useFingerprintMetadata() {
+  return useQuery({
+    queryKey: QK.fingerprints.metadata(),
+    queryFn: () => FINGERPRINT_METADATA_API.get(),
+    retry: 2,
+  });
+}
+
 export function useFingerprintsByStaff(staffId: number) {
   return useQuery({
     queryKey: QK.fingerprints.byStaff(staffId),
@@ -278,6 +288,20 @@ export function useUpdateDeviceSettings() {
     mutationFn: (data: UpdateDeviceSettingsPayload) =>
       DEVICE_SETTINGS_API.update(data),
     onSuccess: () => qc.invalidateQueries({ queryKey: QK.device.settings() }),
+  });
+}
+
+export function useResetDeviceSettings() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: () => DEVICE_SETTINGS_API.reset(),
+    onSuccess: (settings) => qc.setQueryData(QK.device.settings(), settings),
+  });
+}
+
+export function useRestartDevice() {
+  return useMutation({
+    mutationFn: () => DEVICE_SETTINGS_API.restart(),
   });
 }
 
