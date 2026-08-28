@@ -16,21 +16,23 @@ import type {
 
 const RETRY_DELAYS = [1_000, 2_000, 4_000, 8_000, 15_000, 30_000];
 
-function buildDashboardWsUrl(token: string): string {
+function buildDashboardWsUrl(): string {
   const apiUrl =
     process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api";
   const httpBase = apiUrl.replace(/\/api\/?$/, "");
-  return `${httpBase.replace(/^http/, "ws")}/ws/dashboard/?token=${encodeURIComponent(token)}`;
+  return `${httpBase.replace(/^http/, "ws")}/ws/dashboard/`;
 }
 
 export function useDashboardLive(): DashboardConnectionState {
   const queryClient = useQueryClient();
-  const accessToken = useAppSelector((state) => state.auth.accessToken);
+  const isAuthenticated = useAppSelector(
+    (state) => state.auth.isAuthenticated,
+  );
   const [connectionState, setConnectionState] =
     useState<DashboardConnectionState>("connecting");
 
   useEffect(() => {
-    if (!accessToken) {
+    if (!isAuthenticated) {
       return;
     }
 
@@ -130,7 +132,7 @@ export function useDashboardLive(): DashboardConnectionState {
         retryAttempt === 0 ? "connecting" : "reconnecting",
       );
 
-      socket = new WebSocket(buildDashboardWsUrl(accessToken));
+      socket = new WebSocket(buildDashboardWsUrl());
 
       socket.onopen = () => {
         retryAttempt = 0;
@@ -173,7 +175,7 @@ export function useDashboardLive(): DashboardConnectionState {
       if (reconnectTimer) clearTimeout(reconnectTimer);
       socket?.close();
     };
-  }, [accessToken, queryClient]);
+  }, [isAuthenticated, queryClient]);
 
-  return accessToken ? connectionState : "offline";
+  return isAuthenticated ? connectionState : "offline";
 }

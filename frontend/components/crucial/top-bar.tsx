@@ -26,7 +26,7 @@ const TopBar: React.FC<TopBarProps> = ({ isCollapsed, setIsCollapsed }) => {
   const [showDropdown, setShowDropdown] = useState(false);
   const router = useRouter();
   const dispatch = useAppDispatch();
-  const { user, refreshToken, isLoading } = useAppSelector((s) => s.auth);
+  const { user, isLoading } = useAppSelector((s) => s.auth);
   const { data: dashboard } = useDashboardSnapshot();
 
   const initials = getInitials(user?.fullname ?? "", user?.email ?? "");
@@ -37,9 +37,7 @@ const TopBar: React.FC<TopBarProps> = ({ isCollapsed, setIsCollapsed }) => {
 
   const handleLogout = async () => {
     close();
-    if (refreshToken) {
-      await dispatch(logout(refreshToken));
-    }
+    await dispatch(logout());
     router.replace("/");
   };
 

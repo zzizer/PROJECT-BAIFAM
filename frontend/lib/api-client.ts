@@ -9,34 +9,48 @@ function getStore(): any {
   return require("@/store").store;
 }
 
-const apiClient: AxiosInstance = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api",
+const baseURL =
+  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api";
+
+const authClient = axios.create({
+  baseURL,
   headers: { "Content-Type": "application/json" },
   timeout: 15_000,
+  withCredentials: true,
+  withXSRFToken: true,
+  xsrfCookieName: "csrftoken",
+  xsrfHeaderName: "X-CSRFToken",
 });
 
-apiClient.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
-    const { auth } = getStore().getState();
-    if (auth.accessToken) {
-      config.headers.Authorization = `Bearer ${auth.accessToken}`;
-    }
-    return config;
-  },
-  (error: AxiosError) => Promise.reject(error),
-);
+const apiClient: AxiosInstance = axios.create({
+  baseURL,
+  headers: { "Content-Type": "application/json" },
+  timeout: 15_000,
+  withCredentials: true,
+  withXSRFToken: true,
+  xsrfCookieName: "csrftoken",
+  xsrfHeaderName: "X-CSRFToken",
+});
+
+export async function ensureCsrfCookie(): Promise<void> {
+  await authClient.get("/user/csrf/");
+}
 
 let isRefreshing = false;
 let refreshQueue: Array<{
-  resolve: (token: string) => void;
+  resolve: () => void;
   reject: (error: unknown) => void;
 }> = [];
 
-function drainQueue(token: string | null, error: unknown = null) {
+function drainQueue(error: unknown = null) {
   refreshQueue.forEach(({ resolve, reject }) =>
-    token ? resolve(token) : reject(error),
+    error ? reject(error) : resolve(),
   );
   refreshQueue = [];
+}
+
+function isRefreshRequest(url?: string): boolean {
+  return Boolean(url?.includes("/user/refresh/"));
 }
 
 apiClient.interceptors.response.use(
@@ -46,50 +60,34 @@ apiClient.interceptors.response.use(
       _retry?: boolean;
     };
 
-    if (error.response?.status !== 401 || originalRequest._retry) {
+    if (
+      error.response?.status !== 401 ||
+      originalRequest._retry ||
+      isRefreshRequest(originalRequest.url)
+    ) {
       return Promise.reject(error);
     }
 
+    originalRequest._retry = true;
     const store = getStore();
-    const { auth } = store.getState();
-
-    if (!auth.refreshToken) {
-      const { clearAuth } = await import("@/store/slices/authSlice");
-      store.dispatch(clearAuth());
-      return Promise.reject(error);
-    }
 
     if (isRefreshing) {
       return new Promise((resolve, reject) => {
         refreshQueue.push({
-          resolve: (token) => {
-            originalRequest.headers.Authorization = `Bearer ${token}`;
-            resolve(apiClient(originalRequest));
-          },
+          resolve: () => resolve(apiClient(originalRequest)),
           reject,
         });
       });
     }
 
-    originalRequest._retry = true;
     isRefreshing = true;
 
     try {
-      const { data } = await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api"}/user/refresh/`,
-        { refresh: auth.refreshToken },
-      );
-
-      const { setTokens } = await import("@/store/slices/authSlice");
-      store.dispatch(
-        setTokens({ accessToken: data.access, refreshToken: data.refresh }),
-      );
-
-      drainQueue(data.access);
-      originalRequest.headers.Authorization = `Bearer ${data.access}`;
+      await authClient.post("/user/refresh/");
+      drainQueue();
       return apiClient(originalRequest);
     } catch (refreshError) {
-      drainQueue(null, refreshError);
+      drainQueue(refreshError);
       const { clearAuth } = await import("@/store/slices/authSlice");
       store.dispatch(clearAuth());
       return Promise.reject(refreshError);

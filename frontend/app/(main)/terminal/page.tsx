@@ -9,19 +9,18 @@ import { useAppSelector } from "@/store/hooks";
 
 type ConnectionState = "disconnected" | "connecting" | "connected";
 
-function buildTerminalUrl(token: string): string {
+function buildTerminalUrl(): string {
   const apiUrl =
     process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api";
   const serverUrl = apiUrl.replace(/\/api\/?$/, "");
 
-  return `${serverUrl.replace(
-    /^http/,
-    "ws",
-  )}/ws/terminal/?token=${encodeURIComponent(token)}`;
+  return `${serverUrl.replace(/^http/, "ws")}/ws/terminal/`;
 }
 
 export default function TerminalPage() {
-  const accessToken = useAppSelector((state) => state.auth.accessToken);
+  const isAuthenticated = useAppSelector(
+    (state) => state.auth.isAuthenticated,
+  );
   const containerRef = useRef<HTMLDivElement>(null);
   const terminalRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
@@ -106,12 +105,12 @@ export default function TerminalPage() {
   }, [sendSize]);
 
   const connect = () => {
-    if (!accessToken || connectionState !== "disconnected") {
+    if (!isAuthenticated || connectionState !== "disconnected") {
       return;
     }
 
     const terminal = terminalRef.current;
-    const socket = new WebSocket(buildTerminalUrl(accessToken));
+    const socket = new WebSocket(buildTerminalUrl());
 
     socket.binaryType = "arraybuffer";
     socketRef.current = socket;
@@ -195,7 +194,7 @@ export default function TerminalPage() {
             <button
               type="button"
               onClick={connect}
-              disabled={!accessToken}
+              disabled={!isAuthenticated}
               className="flex items-center gap-2 rounded-xl bg-slate-950 px-4 py-2.5 text-sm font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Icon icon="hugeicons:connect" />

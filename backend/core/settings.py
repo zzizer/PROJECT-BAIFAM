@@ -1,12 +1,21 @@
-from pathlib import Path
 import os
-from dotenv import load_dotenv
 from pathlib import Path
+
 import dj_database_url
 from corsheaders.defaults import default_headers
+from dotenv import load_dotenv
 from datetime import timedelta
 
 load_dotenv()
+
+
+def env_list(name, default=""):
+    return [
+        item.strip()
+        for item in os.getenv(name, default).split(",")
+        if item.strip()
+    ]
+
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -18,7 +27,7 @@ if not SECRET_KEY:
 
 DEBUG = os.getenv("DEBUG", "False").lower() == "true"
 
-ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS = env_list("ALLOWED_HOSTS", "localhost,127.0.0.1")
 
 INSTALLED_APPS = [
     "daphne",
@@ -116,7 +125,7 @@ AUTH_USER_MODEL = "users.CustomUser"
 
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        "users.authentication.CookieJWTAuthentication",
         "api_mgt.authentication.APIKeyAuthentication",
     ),
     "DEFAULT_PERMISSION_CLASSES": (
@@ -137,11 +146,37 @@ SIMPLE_JWT = {
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
 
-CORS_ALLOW_ALL_ORIGINS = True
+ACCESS_COOKIE_NAME = os.getenv("ACCESS_COOKIE_NAME", "access_token")
+REFRESH_COOKIE_NAME = os.getenv("REFRESH_COOKIE_NAME", "refresh_token")
+AUTH_COOKIE_SECURE = (
+    os.getenv("AUTH_COOKIE_SECURE", str(not DEBUG)).lower() == "true"
+)
+AUTH_COOKIE_SAMESITE = os.getenv("AUTH_COOKIE_SAMESITE", "Lax")
+AUTH_COOKIE_DOMAIN = os.getenv("AUTH_COOKIE_DOMAIN") or None
+ACCESS_COOKIE_PATH = "/"
+REFRESH_COOKIE_PATH = "/api/user/"
+
+CORS_ALLOW_CREDENTIALS = True
+CORS_ALLOWED_ORIGINS = env_list(
+    "CORS_ALLOWED_ORIGINS",
+    "http://localhost:3000",
+)
+CSRF_TRUSTED_ORIGINS = env_list(
+    "CSRF_TRUSTED_ORIGINS",
+    "http://localhost:3000",
+)
+
+WEBSOCKET_ALLOWED_ORIGINS = env_list(
+    "WEBSOCKET_ALLOWED_ORIGINS",
+    "http://localhost:3000",
+)
 
 CORS_ALLOW_HEADERS = list(default_headers) + [
     "X-API-KEY",
 ]
+
+CSRF_COOKIE_SECURE = AUTH_COOKIE_SECURE
+CSRF_COOKIE_SAMESITE = AUTH_COOKIE_SAMESITE
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = os.path.join(BASE_DIR, "media")

@@ -4,7 +4,6 @@ import { createResourceAPI } from "./create-resource-api";
 import type {
   LoginPayload,
   LoginResponse,
-  RefreshTokenResponse,
   Staff,
   CreateStaffPayload,
   UpdateStaffPayload,
@@ -38,12 +37,9 @@ export const AUTH_API = {
   login: (data: LoginPayload) =>
     apiClient.post<LoginResponse>("/user/login/", data).then((r) => r.data),
 
-  refresh: (refresh: string) =>
-    apiClient
-      .post<RefreshTokenResponse>("/user/refresh/", { refresh })
-      .then((r) => r.data),
+  refresh: () => apiClient.post("/user/refresh/").then((r) => r.data),
 
-  logout: (refresh: string) => apiClient.post("/user/logout/", { refresh }),
+  logout: () => apiClient.post("/user/logout/"),
 };
 
 // ── Staff ──────────────────────────────────────────────────────────────────────

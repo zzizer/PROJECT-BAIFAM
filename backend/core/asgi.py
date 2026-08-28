@@ -1,8 +1,10 @@
 import os
 import django
+from channels.sessions import CookieMiddleware
+from django.conf import settings
 from django.core.asgi import get_asgi_application
 from channels.routing import ProtocolTypeRouter, URLRouter
-from channels.security.websocket import AllowedHostsOriginValidator
+from channels.security.websocket import OriginValidator
 
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "core.settings")
 django.setup()
@@ -18,8 +20,11 @@ websocket_urlpatterns = fingerprint_routes + dashboard_routes
 application = ProtocolTypeRouter(
     {
         "http": django_asgi_app,
-        "websocket": AllowedHostsOriginValidator(
-            JWTAuthMiddleware(URLRouter(websocket_urlpatterns))
+        "websocket": OriginValidator(
+            CookieMiddleware(
+                JWTAuthMiddleware(URLRouter(websocket_urlpatterns))
+            ),
+            settings.WEBSOCKET_ALLOWED_ORIGINS,
         ),
     }
 )

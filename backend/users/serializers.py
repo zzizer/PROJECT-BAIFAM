@@ -26,15 +26,8 @@ class LoginSerializer(serializers.Serializer):
 
 
 class LoginResponseSerializer(serializers.Serializer):
-    access = serializers.CharField(read_only=True)
-    refresh = serializers.CharField(read_only=True)
     user = CustomUserSerializer(read_only=True)
 
 
-class RefreshTokenSerializer(serializers.Serializer):
-    refresh = serializers.CharField()
-
-
 class ResponseRefreshTokenSerializer(serializers.Serializer):
-    access = serializers.CharField(read_only=True)
-    refresh = serializers.CharField(read_only=True)
+    detail = serializers.CharField(read_only=True)

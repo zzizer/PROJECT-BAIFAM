@@ -92,11 +92,11 @@ const getInitials = (name: string) =>
     .slice(0, 2)
     .toUpperCase();
 
-function buildWsUrl(token: string): string {
+function buildWsUrl(): string {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api";
   const httpBase = apiUrl.replace(/\/api\/?$/, "");
   const wsBase = httpBase.replace(/^http/, "ws");
-  return `${wsBase}/ws/scanner/?token=${encodeURIComponent(token)}`;
+  return `${wsBase}/ws/scanner/`;
 }
 
 // ── Scanner Visual ─────────────────────────────────────────────────
@@ -367,7 +367,9 @@ const StaffDropdown = ({
 export default function EnrollPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const accessToken = useAppSelector((state) => state.auth.accessToken);
+  const isAuthenticated = useAppSelector(
+    (state) => state.auth.isAuthenticated,
+  );
   // Query param is the staff's internal_base_uuid
   const preselectedUuid = searchParams?.get("staff") ?? "";
 
@@ -423,13 +425,13 @@ export default function EnrollPage() {
   };
 
   const connectWebSocket = useCallback(() => {
-    if (!staffUuid || !accessToken) {
+    if (!staffUuid || !isAuthenticated) {
       setStep("error");
       setErrorMessage("Your session has expired. Please sign in again.");
       return;
     }
 
-    const wsUrl = buildWsUrl(accessToken);
+    const wsUrl = buildWsUrl();
 
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
@@ -494,12 +496,12 @@ export default function EnrollPage() {
     ws.onclose = () => {
       wsRef.current = null;
     };
-  }, [accessToken, staffUuid, selectedFinger, label]);
+  }, [isAuthenticated, staffUuid, selectedFinger, label]);
 
   const handleStart = () => {
     if (
       !staffUuid ||
-      !accessToken ||
+      !isAuthenticated ||
       selectedFinger === null ||
       isRunning
     ) {
@@ -642,7 +644,7 @@ export default function EnrollPage() {
               <button
                 onClick={handleStart}
                 disabled={
-                  !staffUuid || !accessToken || selectedFinger === null
+                  !staffUuid || !isAuthenticated || selectedFinger === null
                 }
                 className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary-hover transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >

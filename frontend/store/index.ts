@@ -1,5 +1,6 @@
 import { configureStore, combineReducers } from "@reduxjs/toolkit";
 import {
+  createMigrate,
   persistStore,
   persistReducer,
   FLUSH,
@@ -9,6 +10,7 @@ import {
   PURGE,
   REGISTER,
 } from "redux-persist";
+import type { PersistedState } from "redux-persist";
 import authReducer from "./slices/authSlice";
 
 const createNoopStorage = () => ({
@@ -22,12 +24,29 @@ const storage =
     ? require("redux-persist/lib/storage").default
     : createNoopStorage();
 
+const migrations = {
+  1: (state: PersistedState): PersistedState => {
+    if (!state) return state;
+
+    const safeState = {
+      ...state,
+    } as PersistedState & Record<string, unknown>;
+
+    delete safeState.accessToken;
+    delete safeState.refreshToken;
+
+    return safeState;
+  },
+};
+
 const rootReducer = combineReducers({
   auth: persistReducer(
     {
       key: "auth",
+      version: 1,
       storage,
-      whitelist: ["user", "accessToken", "refreshToken", "isAuthenticated"],
+      whitelist: ["user", "isAuthenticated"],
+      migrate: createMigrate(migrations, { debug: false }),
     },
     authReducer,
   ),

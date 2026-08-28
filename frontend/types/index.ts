@@ -38,14 +38,7 @@ export interface LoginPayload {
 }
 
 export interface LoginResponse {
-  access: string;
-  refresh: string;
   user: User;
-}
-
-export interface RefreshTokenResponse {
-  access: string;
-  refresh: string;
 }
 
 // ── Roles ──────────────────────────────────────────────────────────────────────
