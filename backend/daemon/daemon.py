@@ -114,7 +114,7 @@ def run() -> None:
                 time.sleep(2)
                 continue
 
-            if not result.found:
+            if not result.found and not result.scanned:
                 time.sleep(0.1)
                 continue
 

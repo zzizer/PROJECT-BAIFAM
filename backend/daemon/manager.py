@@ -19,6 +19,7 @@ ERROR = "ERROR"
 @dataclass(slots=True)
 class VerifyResult:
     found: bool
+    scanned: bool = False
     slot: Optional[int] = None
     confidence: int = 0
     error: Optional[str] = None
@@ -73,10 +74,15 @@ class FingerprintManager:
                     scanner.wait_for_lift(timeout=2)
 
                     if not match:
-                        return VerifyResult(found=False)
+                        return VerifyResult(found=False, scanned=True)
 
                     slot, confidence = match
-                    return VerifyResult(found=True, slot=slot, confidence=confidence)
+                    return VerifyResult(
+                        found=True,
+                        scanned=True,
+                        slot=slot,
+                        confidence=confidence,
+                    )
 
         except BlockingIOError:
             return VerifyResult(found=False)
