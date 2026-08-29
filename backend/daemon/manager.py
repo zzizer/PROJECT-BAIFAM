@@ -82,11 +82,13 @@ class FingerprintManager:
             return VerifyResult(found=False)
 
         except ScannerError as exc:
+            self.disconnect()
             self.mode = ERROR
             logger.exception("Fingerprint scanner error")
             return VerifyResult(found=False, error=str(exc))
 
         except Exception as exc:
+            self.disconnect()
             self.mode = ERROR
             logger.exception("Unexpected fingerprint scanner error")
             return VerifyResult(found=False, error=str(exc))
