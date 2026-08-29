@@ -257,7 +257,7 @@ export function useEnrollFingerprint() {
 export function useDeleteFingerprint() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: number) => FINGERPRINTS_API.remove(id),
+    mutationFn: (uuid: string) => FINGERPRINTS_API.remove(uuid),
     onSuccess: () => qc.invalidateQueries({ queryKey: QK.fingerprints.all() }),
   });
 }

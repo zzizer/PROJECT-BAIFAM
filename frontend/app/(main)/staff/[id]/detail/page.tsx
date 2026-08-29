@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import { Icon } from "@iconify/react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useStaffDetail } from "@/hooks";
+import { useDeleteStaff, useStaffDetail } from "@/hooks";
 import { FINGERPRINTS_API } from "@/lib/api";
 import { toast } from "sonner";
 import DeleteConfirmationDialog from "@/components/commons/delete-confirmation-dialog";
@@ -71,8 +71,9 @@ export default function StaffDetailPage() {
   const [showFingerprintDeleteDialog, setShowFingerprintDeleteDialog] =
     useState(false);
   const [showStaffDeleteDialog, setShowStaffDeleteDialog] = useState(false);
-  const [deletingFpId, setDeletingFpId] = useState<number | null>(null);
+  const [deletingFpId, setDeletingFpId] = useState<string | null>(null);
   const [isDeletingStaff, setIsDeletingStaff] = useState(false);
+  const deleteStaff = useDeleteStaff();
 
   // Fetch staff data
   const {
@@ -132,8 +133,8 @@ export default function StaffDetailPage() {
   const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
   // Handlers
-  const openFingerprintDelete = (fpId: number) => {
-    setDeletingFpId(fpId);
+  const openFingerprintDelete = (uuid: string) => {
+    setDeletingFpId(uuid);
     setShowFingerprintDeleteDialog(true);
   };
 
@@ -153,7 +154,7 @@ export default function StaffDetailPage() {
   const handleDeleteStaff = async () => {
     setIsDeletingStaff(true);
     try {
-      // TODO: Replace with useDeleteStaff().mutateAsync(staff.internal_base_uuid) when ready
+      await deleteStaff.mutateAsync(staff.internal_base_uuid);
       toast.success("Staff member has been deleted successfully");
       router.push("/staff");
     } catch (err) {
@@ -339,6 +340,16 @@ export default function StaffDetailPage() {
 
       {/* Enrolled Fingerprints */}
       <SectionCard title="Enrolled Fingerprints" icon="hugeicons:finger-print">
+        <div className="flex justify-end mb-4">
+          <Link
+            href={`/fingerprints/enroll?staff=${staff.internal_base_uuid}`}
+            className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-xl hover:bg-primary-hover"
+          >
+            <Icon icon="hugeicons:add-01" />
+            Add Fingerprint
+          </Link>
+        </div>
+
         {fingerprints.length === 0 ? (
           <div className="text-center py-16">
             <Icon
@@ -355,7 +366,7 @@ export default function StaffDetailPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {fingerprints.map((fp: any) => (
+            {fingerprints.map((fp) => (
               <div
                 key={fp.id}
                 className="flex gap-4 p-5 bg-slate-50 border border-slate-200 rounded-2xl"
@@ -378,7 +389,9 @@ export default function StaffDetailPage() {
                   </p>
                 </div>
                 <button
-                  onClick={() => openFingerprintDelete(fp.id)}
+                  onClick={() =>
+                    openFingerprintDelete(fp.internal_base_uuid)
+                  }
                   className="text-red-400 hover:text-red-600 self-start mt-1"
                 >
                   <Icon icon="hugeicons:delete-02" className="text-xl" />
@@ -393,8 +406,8 @@ export default function StaffDetailPage() {
       <div className="bg-white border border-red-100 rounded-3xl p-8">
         <h3 className="text-red-600 font-semibold mb-2">Danger Zone</h3>
         <p className="text-slate-600 text-sm mb-6">
-          Deleting this staff member will remove all associated fingerprints and
-          access records. This action cannot be undone.
+          Deleting this staff member will remove all associated templates from
+          the fingerprint scanner. Historical access logs are retained.
         </p>
         <button
           onClick={() => setShowStaffDeleteDialog(true)}

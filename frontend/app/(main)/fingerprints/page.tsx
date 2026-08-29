@@ -61,7 +61,7 @@ export default function FingerprintsPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
-  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   // Real API call
   const { data, isLoading, isFetching } = useFingerprintList({
@@ -96,9 +96,9 @@ export default function FingerprintsPage() {
     return matchSearch && matchStatus;
   });
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (uuid: string) => {
     try {
-      await deleteFingerprint.mutateAsync(id);
+      await deleteFingerprint.mutateAsync(uuid);
       toast.success("Fingerprint deleted successfully");
       setDeletingId(null);
     } catch (err) {
@@ -195,7 +195,7 @@ export default function FingerprintsPage() {
       header: "",
       render: (row) => (
         <button
-          onClick={() => setDeletingId(row.id)}
+          onClick={() => setDeletingId(row.internal_base_uuid)}
           className="p-1.5 hover:bg-red-50 hover:text-red-500 text-slate-400 rounded-lg transition-colors"
         >
           <Icon icon="hugeicons:delete-02" className="text-base" />

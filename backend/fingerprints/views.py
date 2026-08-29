@@ -115,7 +115,11 @@ class FingerprintDetailView(APIView):
     }
 
     def get_object(self, uuid):
-        return get_object_or_404(Fingerprint, base_uuid=uuid)
+        return get_object_or_404(
+            Fingerprint,
+            internal_base_uuid=uuid,
+            deleted_at__isnull=True,
+        )
 
     @extend_schema(
         summary="Retrieve a fingerprint",
@@ -158,7 +162,16 @@ class FingerprintDetailView(APIView):
     )
     def delete(self, request, uuid):
         fingerprint = self.get_object(uuid)
-        fingerprint.delete()
+
+        try:
+            fingerprint_manager.delete_template(fingerprint.slot)
+        except (BlockingIOError, OSError, ScannerError):
+            return Response(
+                {"detail": "Fingerprint scanner is busy or unavailable."},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+            )
+
+        fingerprint.delete(deleted_by=request.user)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

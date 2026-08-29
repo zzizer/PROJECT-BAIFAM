@@ -106,7 +106,7 @@ export interface Staff {
   is_active: boolean;
   created_at: string;
   updated_at: string;
-  fingerprints?: Fingerprint;
+  fingerprints?: Fingerprint[];
   access_permission?: AccesPermission;
   access_config?: AccesPermission;
 }
@@ -129,6 +129,7 @@ export type FingerprintStatus = "active" | "inactive" | "pending";
 
 export interface Fingerprint {
   id: number;
+  internal_base_uuid: string;
   ref_code: string;
   staff: {
     internal_base_uuid: string;

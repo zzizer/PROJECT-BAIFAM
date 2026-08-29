@@ -25,10 +25,11 @@ export default function TerminalPage() {
   const terminalRef = useRef<Terminal | null>(null);
   const fitAddonRef = useRef<FitAddon | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
+  const autoConnectAttemptedRef = useRef(false);
   const [connectionState, setConnectionState] =
     useState<ConnectionState>("disconnected");
   const [message, setMessage] = useState(
-    "Select Connect to open a terminal session.",
+    "Connecting to the Raspberry Pi...",
   );
 
   const sendSize = useCallback(() => {
@@ -104,7 +105,7 @@ export default function TerminalPage() {
     };
   }, [sendSize]);
 
-  const connect = () => {
+  const connect = useCallback(() => {
     if (!isAuthenticated || connectionState !== "disconnected") {
       return;
     }
@@ -160,7 +161,16 @@ export default function TerminalPage() {
         "\r\n\x1b[90m[Terminal session closed]\x1b[0m",
       );
     };
-  };
+  }, [connectionState, isAuthenticated, sendSize]);
+
+  useEffect(() => {
+    if (!isAuthenticated || autoConnectAttemptedRef.current) {
+      return;
+    }
+
+    autoConnectAttemptedRef.current = true;
+    connect();
+  }, [connect, isAuthenticated]);
 
   const disconnect = () => {
     socketRef.current?.close(1000, "User disconnected");

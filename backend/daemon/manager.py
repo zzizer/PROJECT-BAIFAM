@@ -52,6 +52,20 @@ class FingerprintManager:
                 scanner = self.get_scanner()
                 return scanner.template_count(), scanner.template_capacity()
 
+    def delete_template(self, slot: int) -> None:
+        try:
+            with ScannerFileLock(blocking=True):
+                with self._process_lock:
+                    scanner = self.get_scanner()
+                    scanner.delete_template(slot)
+        except ScannerError:
+            raise
+        except Exception as exc:
+            self.disconnect()
+            raise ScannerError(
+                f"Failed to delete scanner template at slot {slot}: {exc}"
+            ) from exc
+
     def stop(self) -> None:
         self._stop_event.set()
 

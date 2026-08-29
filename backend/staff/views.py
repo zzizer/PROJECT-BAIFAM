@@ -3,6 +3,8 @@ from rest_framework.response import Response
 from rest_framework import status
 from django.shortcuts import get_object_or_404
 from drf_spectacular.utils import extend_schema, OpenApiResponse
+from daemon.manager import fingerprint_manager
+from daemon.scanner import ScannerError
 from utils.pagination import CustomPageNumberPagination
 from .models import Staff, Department, Role, AccessPermission
 from .serializers import (
@@ -94,7 +96,29 @@ class RoleDetailView(APIView):
         tags=["Roles"],
     )
     def delete(self, request, uuid):
-        self.get_object(uuid).delete()
+        staff = self.get_object(uuid)
+        fingerprints = list(
+            staff.fingerprint_entries.filter(deleted_at__isnull=True)
+        )
+
+        for fingerprint in fingerprints:
+            try:
+                fingerprint_manager.delete_template(fingerprint.slot)
+            except (BlockingIOError, OSError, ScannerError):
+                return Response(
+                    {
+                        "detail": (
+                            "Staff deletion stopped because fingerprint "
+                            f"slot {fingerprint.slot} could not be removed "
+                            "from the scanner."
+                        )
+                    },
+                    status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                )
+
+            fingerprint.delete(deleted_by=request.user)
+
+        staff.delete(deleted_by=request.user)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 

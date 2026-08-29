@@ -58,11 +58,7 @@ class StaffSerializer(BaseSerializer):
     user = UUIDRelatedField(
         queryset=CustomUser.objects.all(), required=False, allow_null=True
     )
-    fingerprints = StaffFingerprintSerializer(
-        source="staff_fingerprints",
-        many=True,
-        read_only=True,
-    )
+    fingerprints = serializers.SerializerMethodField(read_only=True)
     access_permission = AccessPermissionSerializer(write_only=True)
 
     access_config = serializers.SerializerMethodField(read_only=True)
@@ -71,6 +67,12 @@ class StaffSerializer(BaseSerializer):
         if hasattr(obj, "access_permission") and obj.access_permission:
             return AccessPermissionSerializer(obj.access_permission).data
         return None
+
+    def get_fingerprints(self, obj):
+        fingerprints = obj.fingerprint_entries.filter(
+            deleted_at__isnull=True,
+        )
+        return FingerprintSerializer(fingerprints, many=True).data
 
     class Meta:
         model = Staff
