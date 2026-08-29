@@ -130,9 +130,17 @@ export type FingerprintStatus = "active" | "inactive" | "pending";
 export interface Fingerprint {
   id: number;
   ref_code: string;
-  staff: number;
-  staff_name: string;
+  staff: {
+    internal_base_uuid: string;
+    id: number;
+    full_name: string;
+    ref_code: string;
+    role: string;
+  };
   finger_index: number;
+  finger_display: string;
+  slot: number;
+  label: string;
   status: FingerprintStatus;
   enrolled_at: string;
   created_at: string;

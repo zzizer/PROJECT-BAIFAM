@@ -116,6 +116,12 @@ class FingerprintSerializer(BaseSerializer):
             "internal_base_uuid": instance.staff.internal_base_uuid,
             "id": instance.staff.id,
             "full_name": instance.staff.full_name,
+            "ref_code": instance.staff.ref_code,
+            "role": (
+                instance.staff.role.name
+                if instance.staff.role
+                else "—"
+            ),
         }
 
         if instance.enrolled_by:

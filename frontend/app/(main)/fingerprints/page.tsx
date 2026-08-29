@@ -84,8 +84,8 @@ export default function FingerprintsPage() {
   const filtered = fingerprints.filter((f) => {
     const matchSearch =
       !search ||
-      f.staff_name.toLowerCase().includes(search.toLowerCase()) ||
-      f.staff_employee_id.toLowerCase().includes(search.toLowerCase()) ||
+      f.staff.full_name.toLowerCase().includes(search.toLowerCase()) ||
+      f.staff.ref_code.toLowerCase().includes(search.toLowerCase()) ||
       f.finger_display?.toLowerCase().includes(search.toLowerCase());
 
     const matchStatus =
@@ -114,7 +114,7 @@ export default function FingerprintsPage() {
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-xl bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0">
             <Icon
-              icon={fingerIcons[row.finger] ?? "hugeicons:finger-print"}
+              icon="hugeicons:finger-print"
               className="text-sm text-slate-500"
             />
           </div>
@@ -133,19 +133,19 @@ export default function FingerprintsPage() {
       render: (row) => (
         <div className="flex items-center gap-2.5">
           <div
-            className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 ${avatarColors[row.staff_id % avatarColors.length]}`}
+            className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold shrink-0 ${avatarColors[row.staff.id % avatarColors.length]}`}
           >
-            {getInitials(row.staff_name)}
+            {getInitials(row.staff.full_name)}
           </div>
           <div>
             <Link
-              href={`/staff/${row.staff_id}`}
+              href={`/staff/${row.staff.internal_base_uuid}`}
               className="text-sm font-medium text-slate-800 hover:text-primary transition-colors"
             >
-              {row.staff_name}
+              {row.staff.full_name}
             </Link>
             <p className="text-xs text-slate-400 font-mono">
-              {row.staff_employee_id}
+              {row.staff.ref_code}
             </p>
           </div>
         </div>
@@ -156,9 +156,9 @@ export default function FingerprintsPage() {
       header: "Role",
       render: (row) => (
         <span
-          className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize ${roleColors[row.staff_role] ?? "bg-slate-100 text-slate-500"}`}
+          className={`text-xs font-medium px-2 py-0.5 rounded-full capitalize ${roleColors[row.staff.role.toLowerCase()] ?? "bg-slate-100 text-slate-500"}`}
         >
-          {row.staff_role}
+          {row.staff.role}
         </span>
       ),
     },
