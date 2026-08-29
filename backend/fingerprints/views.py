@@ -41,7 +41,7 @@ class FingerprintMetadataView(APIView):
     )
     def get(self, request):
         try:
-            used, capacity = fingerprint_manager.storage_info()
+            used, capacity = fingerprint_manager.storage_info(blocking=True)
         except (BlockingIOError, OSError, ScannerError):
             return Response(
                 {"detail": "Fingerprint scanner is busy or unavailable."},

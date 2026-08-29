@@ -45,8 +45,8 @@ class FingerprintManager:
             self._scanner = None
             self.mode = IDLE
 
-    def storage_info(self) -> tuple[int, int]:
-        with ScannerFileLock(blocking=False):
+    def storage_info(self, blocking: bool = False) -> tuple[int, int]:
+        with ScannerFileLock(blocking=blocking):
             with self._process_lock:
                 scanner = self.get_scanner()
                 return scanner.template_count(), scanner.template_capacity()
