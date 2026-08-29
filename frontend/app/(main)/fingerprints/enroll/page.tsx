@@ -9,9 +9,7 @@ import {
   useStaffDetail,
   useStaffList,
 } from "@/hooks";
-import { FINGERPRINTS_API } from "@/lib/api";
 import type { Staff } from "@/types";
-import { toast } from "sonner";
 import { useAppSelector } from "@/store/hooks";
 
 // ── Types ──────────────────────────────────────────────────────────
@@ -379,7 +377,6 @@ export default function EnrollPage() {
   const [step, setStep] = useState<EnrollStep>("idle");
   const [errorMessage, setErrorMessage] = useState("");
   const [slot, setSlot] = useState<number | null>(null);
-  const [isSaving, setIsSaving] = useState(false);
 
   const wsRef = useRef<WebSocket | null>(null);
 
@@ -400,29 +397,6 @@ export default function EnrollPage() {
       wsRef.current?.close();
     };
   }, []);
-
-  const createFingerprintRecord = async (
-    slotNumber: number,
-    staffBaseUuid: string,
-  ) => {
-    if (selectedFinger === null) return;
-
-    setIsSaving(true);
-    try {
-      await FINGERPRINTS_API.create({
-        staff: staffBaseUuid,
-        finger_index: selectedFinger,
-        slot: slotNumber,
-        ...(label.trim() ? { label: label.trim() } : {}),
-      });
-      toast.success("Fingerprint saved successfully");
-    } catch (err) {
-      toast.error("Fingerprint enrolled on scanner but failed to save record");
-      console.error("Failed to save fingerprint record:", err);
-    } finally {
-      setIsSaving(false);
-    }
-  };
 
   const connectWebSocket = useCallback(() => {
     if (!staffUuid || !isAuthenticated) {
@@ -468,13 +442,6 @@ export default function EnrollPage() {
             const resolvedSlot = data.slot ?? null;
             setStep("done");
             setSlot(resolvedSlot);
-
-            if (resolvedSlot !== null) {
-              createFingerprintRecord(
-                resolvedSlot,
-                data.staff_base_uuid ?? staffUuid,
-              );
-            }
             break;
           }
 
@@ -655,23 +622,10 @@ export default function EnrollPage() {
               <>
                 <button
                   onClick={handleReset}
-                  disabled={isSaving}
-                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary-hover transition-all disabled:opacity-60"
+                  className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-primary text-primary-foreground rounded-xl text-sm font-medium hover:bg-primary-hover transition-all"
                 >
-                  {isSaving ? (
-                    <>
-                      <Icon
-                        icon="hugeicons:loading-03"
-                        className="text-base animate-spin"
-                      />
-                      Saving…
-                    </>
-                  ) : (
-                    <>
-                      <Icon icon="hugeicons:add-circle" className="text-base" />
-                      Enroll Another
-                    </>
-                  )}
+                  <Icon icon="hugeicons:add-circle" className="text-base" />
+                  Enroll Another
                 </button>
                 {selectedStaff && (
                   <Link

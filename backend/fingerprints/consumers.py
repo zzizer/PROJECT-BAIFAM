@@ -4,8 +4,11 @@ from uuid import uuid4
 
 from asgiref.sync import async_to_sync
 from channels.generic.websocket import AsyncWebsocketConsumer
+from django.db import close_old_connections, transaction
+from django.utils import timezone
 
 from daemon.manager import fingerprint_manager
+from .serializers import FingerprintSerializer
 
 
 class FingerprintConsumer(AsyncWebsocketConsumer):
@@ -48,13 +51,17 @@ class FingerprintConsumer(AsyncWebsocketConsumer):
 
         if command == "start_enroll":
             staff_base_uuid = data.get("staff_base_uuid")
+            finger_index = data.get("finger_type")
+            label = data.get("label") or ""
 
-            if not staff_base_uuid:
+            if not staff_base_uuid or finger_index is None:
                 await self.send(
                     text_data=json.dumps(
                         {
                             "type": "error",
-                            "message": "Missing staff_base_uuid.",
+                            "message": (
+                                "Missing staff member or finger selection."
+                            ),
                         }
                     )
                 )
@@ -62,7 +69,12 @@ class FingerprintConsumer(AsyncWebsocketConsumer):
 
             threading.Thread(
                 target=self._enroll_process,
-                args=(staff_base_uuid,),
+                args=(
+                    staff_base_uuid,
+                    finger_index,
+                    label,
+                    self.scope["user"].pk,
+                ),
                 daemon=True,
             ).start()
             return
@@ -76,21 +88,49 @@ class FingerprintConsumer(AsyncWebsocketConsumer):
             )
         )
 
-    def _enroll_process(self, staff_base_uuid: str):
+    def _enroll_process(
+        self,
+        staff_base_uuid: str,
+        finger_index: int,
+        label: str,
+        enrolled_by_id: int,
+    ):
+        close_old_connections()
+
+        def save_record(slot: int) -> None:
+            serializer = FingerprintSerializer(
+                data={
+                    "staff": staff_base_uuid,
+                    "finger_index": finger_index,
+                    "slot": slot,
+                    "label": label,
+                }
+            )
+            serializer.is_valid(raise_exception=True)
+
+            with transaction.atomic():
+                serializer.save(
+                    enrolled_at=timezone.now(),
+                    enrolled_by_id=enrolled_by_id,
+                )
+
         try:
             slot = fingerprint_manager.enroll(
                 on_message=lambda kind, message: self._send_message(kind, message),
+                on_template_stored=save_record,
             )
 
             self._send_message(
                 "success",
-                f"Fingerprint enrolled successfully at slot {slot}",
+                f"Fingerprint saved successfully at slot {slot}",
                 slot=slot,
                 staff_base_uuid=staff_base_uuid,
             )
 
         except Exception as e:
             self._send_message("error", f"Enrollment failed: {str(e)}")
+        finally:
+            close_old_connections()
 
     def _send_message(self, msg_type: str, message: str, **extra):
         payload = {

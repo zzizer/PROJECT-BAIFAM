@@ -66,6 +66,31 @@ class FingerprintManager:
                 f"Failed to delete scanner template at slot {slot}: {exc}"
             ) from exc
 
+    def clean_orphaned_templates(
+        self,
+        active_slots: set[int],
+        dry_run: bool = False,
+    ) -> list[int]:
+        try:
+            with ScannerFileLock(blocking=True):
+                with self._process_lock:
+                    scanner = self.get_scanner()
+                    occupied_slots = scanner.occupied_slots()
+                    orphaned_slots = sorted(occupied_slots - active_slots)
+
+                    if not dry_run:
+                        for slot in orphaned_slots:
+                            scanner.delete_template(slot)
+
+                    return orphaned_slots
+        except ScannerError:
+            raise
+        except Exception as exc:
+            self.disconnect()
+            raise ScannerError(
+                f"Failed to clean orphaned scanner templates: {exc}"
+            ) from exc
+
     def stop(self) -> None:
         self._stop_event.set()
 
@@ -116,6 +141,7 @@ class FingerprintManager:
     def enroll(
         self,
         on_message: Optional[Callable[[str, str], None]] = None,
+        on_template_stored: Optional[Callable[[int], None]] = None,
         first_timeout: float = 30,
         second_timeout: float = 30,
     ) -> int:
@@ -144,6 +170,25 @@ class FingerprintManager:
 
                 slot = scanner.capture_second_scan()
                 scanner.wait_for_lift(timeout=2)
+
+                if on_template_stored:
+                    try:
+                        on_template_stored(slot)
+                    except Exception:
+                        try:
+                            scanner.delete_template(slot)
+                        except Exception as cleanup_error:
+                            self.disconnect()
+                            logger.exception(
+                                "Database persistence failed and scanner "
+                                "template rollback also failed for slot %s",
+                                slot,
+                            )
+                            raise ScannerError(
+                                "Fingerprint record could not be saved and "
+                                f"scanner slot {slot} could not be rolled back."
+                            ) from cleanup_error
+                        raise
 
                 self.mode = VERIFYING
                 return slot

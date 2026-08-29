@@ -1,4 +1,5 @@
 import time
+import math
 from pyfingerprint.pyfingerprint import (
     PyFingerprint,
     FINGERPRINT_CHARBUFFER1,
@@ -124,3 +125,26 @@ class FingerprintScanner:
     def template_capacity(self) -> int:
         self._require_connection()
         return self._f.getStorageCapacity()
+
+    def occupied_slots(self) -> set[int]:
+        self._require_connection()
+
+        capacity = self._f.getStorageCapacity()
+        page_size = 256
+        page_count = math.ceil(capacity / page_size)
+        occupied = set()
+
+        for page in range(page_count):
+            template_index = self._f.getTemplateIndex(page)
+            page_offset = page * page_size
+
+            for index, is_used in enumerate(template_index):
+                slot = page_offset + index
+
+                if slot >= capacity:
+                    break
+
+                if is_used:
+                    occupied.add(slot)
+
+        return occupied

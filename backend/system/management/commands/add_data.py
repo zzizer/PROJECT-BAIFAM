@@ -1,10 +1,13 @@
 import json
 from pathlib import Path
 
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 from django.db import transaction
 from django.conf import settings
 
+from daemon.manager import fingerprint_manager
+from daemon.scanner import ScannerError
+from fingerprints.models import Fingerprint
 from system.models import Scope
 
 
@@ -101,6 +104,24 @@ def sync_scopes():
     }
 
 
+def clean_orphaned_fingerprint_slots(dry_run=False):
+    active_slots = set(
+        Fingerprint.objects.filter(
+            deleted_at__isnull=True,
+        ).values_list("slot", flat=True)
+    )
+
+    orphaned_slots = fingerprint_manager.clean_orphaned_templates(
+        active_slots=active_slots,
+        dry_run=dry_run,
+    )
+
+    return {
+        "slots": orphaned_slots,
+        "deleted": 0 if dry_run else len(orphaned_slots),
+    }
+
+
 # ─────────────────────────────────────────────────────────────
 # Management Command
 # ─────────────────────────────────────────────────────────────
@@ -128,6 +149,15 @@ class Command(BaseCommand):
             help="Simulate changes without writing to DB",
         )
 
+        parser.add_argument(
+            "--clean-orphaned-fingerprints",
+            action="store_true",
+            help=(
+                "Delete scanner templates that have no active fingerprint "
+                "database record"
+            ),
+        )
+
     @transaction.atomic
     def handle(self, *args, **options):
         results = {}
@@ -149,6 +179,54 @@ class Command(BaseCommand):
                 results["scopes"] = sync_scopes()
 
         # ─────────────────────────────────────────────
+        # Orphaned fingerprint scanner templates
+        # ─────────────────────────────────────────────
+        if options["clean_orphaned_fingerprints"]:
+            action = "Checking" if dry_run else "Cleaning"
+            self.stdout.write(
+                f"{action} orphaned fingerprint scanner slots..."
+            )
+
+            try:
+                fingerprint_result = clean_orphaned_fingerprint_slots(
+                    dry_run=dry_run,
+                )
+            except ScannerError as exc:
+                raise CommandError(str(exc)) from exc
+
+            orphaned_slots = fingerprint_result["slots"]
+
+            if orphaned_slots:
+                self.stdout.write(
+                    self.style.WARNING(
+                        "Orphaned scanner slots: "
+                        + ", ".join(str(slot) for slot in orphaned_slots)
+                    )
+                )
+            else:
+                self.stdout.write(
+                    self.style.SUCCESS(
+                        "No orphaned fingerprint scanner slots found."
+                    )
+                )
+
+            if dry_run:
+                self.stdout.write(
+                    self.style.WARNING(
+                        f"Dry run: {len(orphaned_slots)} slot(s) would be deleted."
+                    )
+                )
+            else:
+                self.stdout.write(
+                    self.style.SUCCESS(
+                        f"Deleted {fingerprint_result['deleted']} "
+                        "orphaned scanner template(s)."
+                    )
+                )
+
+            results["fingerprint_orphans"] = fingerprint_result
+
+        # ─────────────────────────────────────────────
         # Output summary
         # ─────────────────────────────────────────────
         if not results and not dry_run:
@@ -158,6 +236,9 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS("\nSync completed\n"))
 
         for key, res in results.items():
+            if key == "fingerprint_orphans":
+                continue
+
             self.stdout.write(
                 f"{key.upper()} → "
                 f"Created: {res['created']}, "
