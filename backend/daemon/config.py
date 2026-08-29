@@ -10,3 +10,7 @@ FINGER_WAIT_TIMEOUT_SEC = float(os.environ.get("FINGER_WAIT_TIMEOUT_SEC", "30.0"
 
 RELAY_PIN = int(os.environ.get("RELAY_PIN", "17"))
 RELAY_ACTIVE_SEC = float(os.environ.get("RELAY_ACTIVE_SEC", "3.0"))
+BUZZER_PIN = int(os.environ.get("BUZZER_PIN", "18"))
+BUZZER_FREQUENCY_HZ = int(
+    os.environ.get("BUZZER_FREQUENCY_HZ", "2000")
+)

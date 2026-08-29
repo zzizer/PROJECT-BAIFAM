@@ -19,6 +19,11 @@ import django
 django.setup()
 
 from daemon.access_service import AccessDecisionService
+from daemon.buzzer import (
+    beep_accepted,
+    beep_rejected,
+    cleanup as buzzer_cleanup,
+)
 from daemon.manager import fingerprint_manager
 from daemon.relay import cleanup as relay_cleanup
 from daemon.relay import unlock
@@ -119,6 +124,7 @@ def run() -> None:
                 continue
 
             decision = access_service.evaluate(result.slot, result.confidence)
+            buzzer_enabled, buzzer_volume = access_service.buzzer_settings()
 
             if (
                 decision.fingerprint
@@ -128,6 +134,9 @@ def run() -> None:
                 access_service.record_log(decision)
 
             if decision.granted:
+                if buzzer_enabled:
+                    beep_accepted(buzzer_volume)
+
                 staff_name = getattr(decision.staff, "full_name", "Unknown")
                 logger.info(
                     "Access granted: staff=%s slot=%s confidence=%s",
@@ -139,6 +148,9 @@ def run() -> None:
                 unlock(duration=access_service.unlock_duration_seconds())
 
             else:
+                if buzzer_enabled:
+                    beep_rejected(buzzer_volume)
+
                 logger.info(
                     "Access denied: reason=%s slot=%s confidence=%s",
                     decision.reason,
@@ -149,6 +161,7 @@ def run() -> None:
             time.sleep(0.2)
     finally:
         fingerprint_manager.disconnect()
+        buzzer_cleanup()
         relay_cleanup()
         logger.info("Access Pi Verification Daemon Stopped.")
 

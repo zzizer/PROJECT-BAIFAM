@@ -42,4 +42,4 @@ def unlock(duration: float = RELAY_ACTIVE_SEC) -> None:
 
 def cleanup() -> None:
     if HAS_GPIO:
-        GPIO.cleanup()
+        GPIO.cleanup(RELAY_PIN)

@@ -261,7 +261,7 @@ export default function SettingsPage() {
     device_name: "",
     device_location: "",
     timezone: "Africa/Kampala",
-    unlock_duration_sec: 3,
+    unlock_duration_sec: 5,
     require_2finger_confirm: false,
     allow_unknown_finger_log: false,
     buzzer_enabled: true,

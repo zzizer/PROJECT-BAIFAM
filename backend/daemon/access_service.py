@@ -187,4 +187,8 @@ class AccessDecisionService:
 
     def unlock_duration_seconds(self) -> float:
         settings = DeviceSettings.get()
-        return float(settings.unlock_duration_sec or 3)
+        return float(settings.unlock_duration_sec or 5)
+
+    def buzzer_settings(self) -> tuple[bool, int]:
+        settings = DeviceSettings.get()
+        return settings.buzzer_enabled, settings.buzzer_volume
