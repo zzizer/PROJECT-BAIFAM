@@ -4,17 +4,29 @@ from uuid import uuid4
 
 from asgiref.sync import async_to_sync
 from channels.generic.websocket import AsyncWebsocketConsumer
+from channels.db import database_sync_to_async
 from django.db import close_old_connections, transaction
 from django.utils import timezone
 
+from api_mgt.models import APIKey
 from daemon.manager import fingerprint_manager
 from .serializers import FingerprintSerializer
+
+
+@database_sync_to_async
+def can_enroll_with_api_key(api_key: APIKey) -> bool:
+    return api_key.has_scope("write:fingerprints")
 
 
 class FingerprintConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         if not self.scope["user"].is_authenticated:
             await self.close(code=4401)
+            return
+
+        auth = self.scope.get("auth")
+        if isinstance(auth, APIKey) and not await can_enroll_with_api_key(auth):
+            await self.close(code=4403)
             return
 
         self.room_group_name = f"scanner_{uuid4().hex}"

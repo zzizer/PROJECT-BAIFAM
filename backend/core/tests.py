@@ -6,9 +6,11 @@ from channels.security.websocket import OriginValidator
 from channels.testing import WebsocketCommunicator
 from django.conf import settings
 from django.test import TransactionTestCase
+from rest_framework.exceptions import AuthenticationFailed
 from rest_framework_simplejwt.exceptions import InvalidToken
 from rest_framework_simplejwt.tokens import AccessToken
 
+from api_mgt.models import APIKey
 from users.models import CustomUser
 
 from .websocket_auth import JWTAuthMiddleware
@@ -73,6 +75,52 @@ class WebSocketCookieAuthenticationTests(TransactionTestCase):
             str(self.user.pk),
         )
         await communicator.disconnect()
+
+    @patch(
+        "core.websocket_auth.authenticate_api_key",
+        new_callable=AsyncMock,
+    )
+    async def test_valid_api_key_header_authenticates(
+        self, authenticate_api_key
+    ):
+        api_key, plaintext = APIKey.generate()
+        api_key.name = "Scanner integration"
+        api_key.created_by = self.user
+        authenticate_api_key.return_value = (self.user, api_key)
+        communicator = WebsocketCommunicator(
+            middleware_application(),
+            "/ws/test/",
+            headers=[(b"x-api-key", plaintext.encode())],
+        )
+
+        connected, _ = await communicator.connect()
+
+        self.assertTrue(connected)
+        self.assertEqual(
+            await communicator.receive_from(),
+            str(self.user.pk),
+        )
+        authenticate_api_key.assert_awaited_once_with(plaintext)
+        await communicator.disconnect()
+
+    @patch(
+        "core.websocket_auth.authenticate_api_key",
+        new_callable=AsyncMock,
+    )
+    async def test_invalid_api_key_is_rejected(self, authenticate_api_key):
+        authenticate_api_key.side_effect = AuthenticationFailed(
+            "Invalid API key."
+        )
+        communicator = WebsocketCommunicator(
+            middleware_application(),
+            "/ws/test/",
+            headers=[(b"x-api-key", b"invalid")],
+        )
+
+        connected, close_code = await communicator.connect()
+
+        self.assertFalse(connected)
+        self.assertEqual(close_code, 4401)
 
     async def test_missing_cookie_is_rejected(self):
         communicator = WebsocketCommunicator(
