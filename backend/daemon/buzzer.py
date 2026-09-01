@@ -1,7 +1,11 @@
+import logging
 import threading
 import time
 
 from .config import BUZZER_FREQUENCY_HZ, BUZZER_PIN
+
+
+logger = logging.getLogger(__name__)
 
 try:
     import RPi.GPIO as GPIO
@@ -9,8 +13,9 @@ try:
     GPIO.setmode(GPIO.BCM)
     GPIO.setup(BUZZER_PIN, GPIO.OUT, initial=GPIO.LOW)
     HAS_GPIO = True
-except (ImportError, RuntimeError):
+except (ImportError, RuntimeError) as exc:
     HAS_GPIO = False
+    logger.warning("Buzzer GPIO unavailable: %s", exc)
 
 
 _buzzer_lock = threading.Lock()
