@@ -148,8 +148,10 @@ def run() -> None:
                 unlock(duration=access_service.unlock_duration_seconds())
 
             else:
-                if buzzer_enabled:
-                    beep_rejected(buzzer_volume)
+                # A denial is safety-critical feedback and must never be silent.
+                # Enforce enough output for the buzzer to be heard and felt.
+                rejection_volume = max(buzzer_volume, 80)
+                beep_rejected(rejection_volume)
 
                 logger.info(
                     "Access denied: reason=%s slot=%s confidence=%s",

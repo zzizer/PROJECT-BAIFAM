@@ -58,9 +58,9 @@ def beep_accepted(volume: int) -> None:
 def beep_rejected(volume: int) -> None:
     _play(
         (
-            (0.12, 0.10),
-            (0.12, 0.10),
-            (0.12, 0.0),
+            (0.35, 0.15),
+            (0.35, 0.15),
+            (0.50, 0.0),
         ),
         volume,
     )
