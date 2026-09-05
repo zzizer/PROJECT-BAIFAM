@@ -255,6 +255,11 @@ const menuItems: MenuItem[] = [
     href: "/access-logs",
   },
   {
+    label: "Networks",
+    icon: "hugeicons:wifi-01",
+    href: "/networks",
+  },
+  {
     label: "Settings",
     icon: "hugeicons:setting-07",
     href: "/settings",
